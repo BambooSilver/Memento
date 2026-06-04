@@ -388,6 +388,56 @@ input::file-selector-button {
     color: #fff;
 }
 
+.save-button-error {
+    animation: save-shake 0.42s ease;
+    background: rgba(96, 8, 15, 0.85) !important;
+    border-color: #880808 !important;
+    color: #f0d7da !important;
+}
+
+@keyframes save-shake {
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+
+    20%,
+    60% {
+        transform: translateX(-5px);
+    }
+
+    40%,
+    80% {
+        transform: translateX(5px);
+    }
+}
+
+.settings-toast {
+    background: rgba(12, 14, 15, 0.82);
+    border: 1px solid rgba(136, 8, 8, 0.86);
+    border-radius: 8px;
+    bottom: 92px;
+    box-shadow: 0 18px 54px rgba(0, 0, 0, 0.55);
+    color: #d8b5b8;
+    font-size: 0.82rem;
+    left: 50%;
+    line-height: 1.35;
+    max-width: min(520px, calc(100vw - 40px));
+    opacity: 0;
+    padding: 0.75rem 0.9rem;
+    pointer-events: none;
+    position: fixed;
+    text-align: center;
+    transform: translate(-50%, 8px);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    z-index: 15;
+}
+
+.settings-toast.visible {
+    opacity: 1;
+    transform: translate(-50%, 0);
+}
+
 .settings-button {
     bottom: 24px;
     height: 40px;
@@ -413,6 +463,26 @@ input::file-selector-button {
     gap: 10px;
     grid-template-columns: 34px minmax(110px, 0.7fr) minmax(180px, 1.3fr) auto auto 38px 38px;
     transition: transform 0.18s ease, opacity 0.18s ease;
+}
+
+.shortcut-row-invalid {
+    background: rgba(96, 8, 15, 0.18);
+    border: 1px solid rgba(136, 8, 8, 0.78);
+    border-radius: 8px;
+    margin: -6px;
+    padding: 5px;
+}
+
+.shortcut-row-invalid input,
+.shortcut-row-invalid .shortcut-icon-picker-button,
+.shortcut-row-invalid .counter-toggle,
+.shortcut-row-invalid .drag-handle,
+.shortcut-row-invalid .icon-button {
+    border-color: #880808;
+}
+
+.shortcut-row-invalid input {
+    background: rgba(50, 2, 4, 0.35);
 }
 
 .drag-handle {

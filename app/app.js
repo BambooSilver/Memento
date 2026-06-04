@@ -835,6 +835,8 @@
     function updateShortcutFromInput(input, target) {
         var row = input.closest('.shortcut-row');
         if (!row) return;
+        row.classList.remove('shortcut-row-invalid');
+        row.removeAttribute('title');
 
         var shortcut = target.find(function (item) {
             return item.id === row.getAttribute('data-id');
@@ -847,6 +849,97 @@
         }
 
         shortcut[input.getAttribute('data-field')] = input.value;
+    }
+
+    function validateSettingsShortcuts() {
+        var rows = Array.prototype.slice.call(document.querySelectorAll('#settingsShortcuts .shortcut-row'));
+        var messages = [];
+
+        rows.forEach(function (row) {
+            row.classList.remove('shortcut-row-invalid');
+            row.removeAttribute('title');
+
+            var nameInput = row.querySelector('[data-field="name"]');
+            var urlInput = row.querySelector('[data-field="url"]');
+            var name = nameInput ? nameInput.value.trim() : '';
+            var url = urlInput ? urlInput.value.trim() : '';
+            var rowMessages = [];
+
+            if (!name && !url) {
+                rowMessages.push('Shortcut name and URL are missing.');
+            } else {
+                if (!name) rowMessages.push('Shortcut name is missing.');
+                if (!url) rowMessages.push('Shortcut URL is missing.');
+            }
+
+            if (url) {
+                try {
+                    var parsed = new URL(normalizeUrl(url));
+                    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+                        rowMessages.push('Shortcut URL must start with http or https.');
+                    }
+                } catch (error) {
+                    rowMessages.push('Shortcut URL is not valid.');
+                }
+            }
+
+            if (rowMessages.length) {
+                row.classList.add('shortcut-row-invalid');
+                row.title = rowMessages.join(' ');
+                messages = messages.concat(rowMessages);
+            }
+        });
+
+        return {
+            ok: messages.length === 0,
+            message: uniqueMessages(messages).join(' ')
+        };
+    }
+
+    function uniqueMessages(messages) {
+        return messages.filter(function (message, index) {
+            return messages.indexOf(message) === index;
+        });
+    }
+
+    function showSettingsToast(message) {
+        var existing = document.querySelector('.settings-toast');
+        if (existing) existing.remove();
+
+        var toast = document.createElement('div');
+        toast.className = 'settings-toast';
+        toast.setAttribute('role', 'status');
+        toast.textContent = message;
+        document.body.appendChild(toast);
+
+        window.setTimeout(function () {
+            toast.classList.add('visible');
+        }, 20);
+
+        window.setTimeout(function () {
+            toast.classList.remove('visible');
+            window.setTimeout(function () {
+                if (toast.parentNode) toast.remove();
+            }, 220);
+        }, 5200);
+    }
+
+    function clearSettingsToast() {
+        var existing = document.querySelector('.settings-toast');
+        if (existing) existing.remove();
+    }
+
+    function pulseSettingsSaveButton(form) {
+        var button = form.querySelector('button[type="submit"]');
+        if (!button) return;
+
+        button.classList.remove('save-button-error');
+        void button.offsetWidth;
+        button.classList.add('save-button-error');
+
+        window.setTimeout(function () {
+            button.classList.remove('save-button-error');
+        }, 650);
     }
 
     function finishShortcutDrag() {
@@ -1001,6 +1094,14 @@
         }
 
         if (event.target.id === 'settingsForm') {
+            var shortcutValidation = validateSettingsShortcuts();
+            if (!shortcutValidation.ok) {
+                pulseSettingsSaveButton(event.target);
+                showSettingsToast(shortcutValidation.message || 'Shortcut setup is incomplete.');
+                return;
+            }
+            clearSettingsToast();
+
             var fields = event.target.elements;
             var nextSettings = {
                 dob: fields.dob.value,
@@ -1239,6 +1340,7 @@
         }
 
         if (action === 'closeSettings') {
+            clearSettingsToast();
             state.settings = loadSettings();
             state.resetArmed = false;
             startLoop();
