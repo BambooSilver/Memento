@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Memento",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A minimal new tab page for age and life countdown, customizable to your need to keep you motivated.",
   "chrome_url_overrides": {
     "newtab": "dashboard.html"

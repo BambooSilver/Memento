@@ -618,7 +618,7 @@
             '<span>Count clicks</span>',
             '<button class="ghost-button tiny-button" type="button" data-action="countClicksAll">Tick all</button>',
             '<button class="ghost-button tiny-button" type="button" data-action="countClicksNone">Untick all</button>',
-            source === 'settings' ? '<button class="ghost-button tiny-button reset-all-counters-button" type="button" data-action="openAllCountersReset">Reset all</button>' : '',
+            source === 'settings' ? '<button class="ghost-button tiny-button reset-all-counters-button" type="button" data-action="openAllCountersReset">Reset counters</button>' : '',
             '</div>'
         ].join('');
     }
