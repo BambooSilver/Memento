@@ -577,6 +577,7 @@
             '<input id="' + id + 'TextColor" name="' + name + 'TextColor" class="color-circle small-color-circle" type="color" value="' + escapeHtml(normalized.textColor) + '">',
             '<label class="mini-field-label" for="' + id + 'BorderColor">Border</label>',
             '<input id="' + id + 'BorderColor" name="' + name + 'BorderColor" class="color-circle small-color-circle" type="color" value="' + escapeHtml(normalized.borderColor) + '">',
+            '<button class="icon-button text-style-reset" type="button" data-action="resetTextStyle" data-text-style="' + escapeHtml(name) + '" title="Reset text style" aria-label="Reset ' + label + ' style"><i class="fa-solid fa-rotate-left"></i></button>',
             '</div>',
             '</div>'
         ].join('');
@@ -1071,6 +1072,23 @@
         }, defaults);
     }
 
+    function resetTextStyleControl(button) {
+        var name = button.getAttribute('data-text-style');
+        var defaults = DEFAULT_TEXT_STYLES[name];
+        var row = button.closest('.text-style-controls');
+        if (!defaults || !row) return;
+
+        var slider = row.querySelector('[name="' + name + 'Size"]');
+        var number = row.querySelector('[name="' + name + 'SizeNumber"]');
+        var textColor = row.querySelector('[name="' + name + 'TextColor"]');
+        var borderColor = row.querySelector('[name="' + name + 'BorderColor"]');
+
+        if (slider) slider.value = Math.min(defaults.size, 8);
+        if (number) number.value = defaults.size.toFixed(2);
+        if (textColor) textColor.value = defaults.textColor;
+        if (borderColor) borderColor.value = defaults.borderColor;
+    }
+
     app.addEventListener('pointerdown', function (event) {
         var handle = event.target.closest('.drag-handle');
         if (!handle) return;
@@ -1252,6 +1270,10 @@
 
         if (action === 'openAllCountersReset') {
             renderAllCountersResetConfirm();
+        }
+
+        if (action === 'resetTextStyle') {
+            resetTextStyleControl(actionElement);
         }
     });
 

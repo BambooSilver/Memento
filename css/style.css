@@ -552,7 +552,7 @@ input::file-selector-button {
     border-radius: 8px;
     display: grid;
     gap: 6px;
-    grid-template-columns: auto minmax(54px, 1fr) 70px auto 28px auto 28px;
+    grid-template-columns: auto minmax(50px, 1fr) 70px auto 28px auto 28px 30px;
     min-height: 44px;
     padding: 7px 8px;
 }
@@ -620,6 +620,16 @@ input::file-selector-button {
     min-height: 30px;
     padding: 0.25rem 0.35rem;
     text-align: center;
+}
+
+.text-style-reset {
+    height: 30px;
+    min-height: 30px;
+    width: 30px;
+}
+
+.text-style-reset i {
+    font-size: 0.76rem;
 }
 
 .danger-zone {
@@ -1018,7 +1028,7 @@ input::file-selector-button {
     }
 
     .text-style-controls {
-        grid-template-columns: auto minmax(54px, 1fr) 70px auto 28px auto 28px;
+        grid-template-columns: auto minmax(50px, 1fr) 70px auto 28px auto 28px 30px;
     }
 
     .shortcut-space {
