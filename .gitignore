@@ -1,0 +1,11 @@
+.idea/
+.vs/
+node_modules/
+
+*.zip
+*.crx
+*.pem
+*.log
+
+dist/
+build/
