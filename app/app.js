@@ -111,7 +111,7 @@
     function normalizeTextStyle(style, defaults) {
         style = style || {};
         return {
-            size: clampNumber(style.size, 0.4, 8, defaults.size),
+            size: clampNumber(style.size, 0.1, 32, defaults.size),
             textColor: normalizeHexColor(style.textColor, defaults.textColor),
             borderColor: normalizeHexColor(style.borderColor, defaults.borderColor)
         };
@@ -571,8 +571,8 @@
             '</div>',
             '<div class="text-style-controls">',
             '<label class="mini-field-label" for="' + id + 'Size">Size</label>',
-            '<input id="' + id + 'Size" name="' + name + 'Size" class="text-size-slider" type="range" min="0.4" max="8" step="0.05" value="' + escapeHtml(normalized.size) + '">',
-            '<span class="text-size-value">' + escapeHtml(normalized.size.toFixed(2)) + 'rem</span>',
+            '<input id="' + id + 'Size" name="' + name + 'Size" class="text-size-slider" type="range" min="0.4" max="8" step="0.05" value="' + escapeHtml(Math.min(normalized.size, 8)) + '">',
+            '<input id="' + id + 'SizeNumber" name="' + name + 'SizeNumber" class="text-size-number" type="number" min="0.1" max="32" step="0.05" value="' + escapeHtml(normalized.size.toFixed(2)) + '" aria-label="' + label + ' size in rem">',
             '<label class="mini-field-label" for="' + id + 'TextColor">Text</label>',
             '<input id="' + id + 'TextColor" name="' + name + 'TextColor" class="color-circle small-color-circle" type="color" value="' + escapeHtml(normalized.textColor) + '">',
             '<label class="mini-field-label" for="' + id + 'BorderColor">Border</label>',
@@ -1031,8 +1031,14 @@
 
     app.addEventListener('input', function (event) {
         if (event.target.matches('.text-size-slider')) {
-            var valueLabel = event.target.parentElement.querySelector('.text-size-value');
-            if (valueLabel) valueLabel.textContent = Number(event.target.value).toFixed(2) + 'rem';
+            var numberInput = event.target.parentElement.querySelector('.text-size-number');
+            if (numberInput) numberInput.value = Number(event.target.value).toFixed(2);
+        }
+
+        if (event.target.matches('.text-size-number')) {
+            var sliderInput = event.target.parentElement.querySelector('.text-size-slider');
+            var numericValue = Number(event.target.value);
+            if (sliderInput && isFinite(numericValue)) sliderInput.value = Math.min(Math.max(numericValue, 0.4), 8);
         }
 
         if (!event.target.matches('[data-field]')) return;
@@ -1057,8 +1063,9 @@
     }
 
     function readTextStyleField(fields, name, defaults) {
+        var sizeInput = fields[name + 'SizeNumber'] || fields[name + 'Size'];
         return normalizeTextStyle({
-            size: fields[name + 'Size'] ? fields[name + 'Size'].value : defaults.size,
+            size: sizeInput ? sizeInput.value : defaults.size,
             textColor: fields[name + 'TextColor'] ? fields[name + 'TextColor'].value : defaults.textColor,
             borderColor: fields[name + 'BorderColor'] ? fields[name + 'BorderColor'].value : defaults.borderColor
         }, defaults);

@@ -537,7 +537,7 @@ input::file-selector-button {
     align-items: end;
     display: grid;
     gap: 10px;
-    grid-template-columns: minmax(210px, 1fr) minmax(300px, 0.95fr);
+    grid-template-columns: minmax(190px, 0.85fr) minmax(340px, 1fr);
 }
 
 .text-setting-input {
@@ -551,14 +551,13 @@ input::file-selector-button {
     border: 1px solid rgba(53, 61, 63, 0.65);
     border-radius: 8px;
     display: grid;
-    gap: 8px;
-    grid-template-columns: auto minmax(94px, 1fr) 58px auto 30px auto 30px;
+    gap: 6px;
+    grid-template-columns: auto minmax(54px, 1fr) 70px auto 28px auto 28px;
     min-height: 44px;
     padding: 7px 8px;
 }
 
 .mini-field-label,
-.text-size-value,
 .text-style-only {
     color: #575f62;
     font-size: 0.72rem;
@@ -571,14 +570,11 @@ input::file-selector-button {
     min-height: 44px;
 }
 
-.text-size-value {
-    font-variant-numeric: tabular-nums;
-}
-
 .text-size-slider {
     accent-color: #575f62;
     background: transparent;
     border: 0;
+    cursor: pointer;
     min-height: 28px;
     padding: 0;
 }
@@ -586,6 +582,44 @@ input::file-selector-button {
 .text-size-slider:hover,
 .text-size-slider:focus {
     background: transparent;
+}
+
+.text-size-slider::-webkit-slider-runnable-track {
+    background: #353d3f;
+    border-radius: 999px;
+    height: 3px;
+}
+
+.text-size-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    background: #6f7a7d;
+    border: 0;
+    border-radius: 50%;
+    height: 16px;
+    margin-top: -6.5px;
+    width: 16px;
+}
+
+.text-size-slider::-moz-range-track {
+    background: #353d3f;
+    border-radius: 999px;
+    height: 3px;
+}
+
+.text-size-slider::-moz-range-thumb {
+    background: #6f7a7d;
+    border: 0;
+    border-radius: 50%;
+    height: 16px;
+    width: 16px;
+}
+
+.text-size-number {
+    font-size: 0.76rem;
+    font-variant-numeric: tabular-nums;
+    min-height: 30px;
+    padding: 0.25rem 0.35rem;
+    text-align: center;
 }
 
 .danger-zone {
@@ -948,9 +982,11 @@ input::file-selector-button {
 }
 
 .small-color-circle {
-    height: 30px;
-    min-height: 30px;
-    width: 30px;
+    height: 28px;
+    justify-self: center;
+    min-height: 28px;
+    min-width: 28px;
+    width: 28px;
 }
 
 @media (max-width: 680px) {
@@ -982,7 +1018,7 @@ input::file-selector-button {
     }
 
     .text-style-controls {
-        grid-template-columns: auto minmax(90px, 1fr) 58px auto 30px auto 30px;
+        grid-template-columns: auto minmax(54px, 1fr) 70px auto 28px auto 28px;
     }
 
     .shortcut-space {
