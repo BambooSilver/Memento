@@ -8,6 +8,29 @@
         countdownSuffix: 'if you\'re lucky'
     };
 
+    var DEFAULT_TEXT_STYLES = {
+        ageLabel: {
+            size: 1.2,
+            textColor: '#b0b5b9',
+            borderColor: '#000000'
+        },
+        countdownPrefix: {
+            size: 1,
+            textColor: '#b0b5b9',
+            borderColor: '#000000'
+        },
+        countdownValue: {
+            size: 0.75,
+            textColor: '#880808',
+            borderColor: '#000000'
+        },
+        countdownSuffix: {
+            size: 0.5,
+            textColor: '#1e1e1e',
+            borderColor: '#000000'
+        }
+    };
+
     var state = {
         settings: loadSettings(),
         setupStep: 0,
@@ -70,8 +93,45 @@
         return {
             ageLabel: text.ageLabel || DEFAULT_TEXT.ageLabel,
             countdownPrefix: text.countdownPrefix || DEFAULT_TEXT.countdownPrefix,
-            countdownSuffix: text.countdownSuffix || DEFAULT_TEXT.countdownSuffix
+            countdownSuffix: text.countdownSuffix || DEFAULT_TEXT.countdownSuffix,
+            styles: normalizeTextStyles(text.styles)
         };
+    }
+
+    function normalizeTextStyles(styles) {
+        styles = styles || {};
+        return {
+            ageLabel: normalizeTextStyle(styles.ageLabel, DEFAULT_TEXT_STYLES.ageLabel),
+            countdownPrefix: normalizeTextStyle(styles.countdownPrefix, DEFAULT_TEXT_STYLES.countdownPrefix),
+            countdownValue: normalizeTextStyle(styles.countdownValue, DEFAULT_TEXT_STYLES.countdownValue),
+            countdownSuffix: normalizeTextStyle(styles.countdownSuffix, DEFAULT_TEXT_STYLES.countdownSuffix)
+        };
+    }
+
+    function normalizeTextStyle(style, defaults) {
+        style = style || {};
+        return {
+            size: clampNumber(style.size, 0.4, 8, defaults.size),
+            textColor: normalizeHexColor(style.textColor, defaults.textColor),
+            borderColor: normalizeHexColor(style.borderColor, defaults.borderColor)
+        };
+    }
+
+    function clampNumber(value, min, max, fallback) {
+        var number = Number(value);
+        if (!isFinite(number)) return fallback;
+        return Math.min(max, Math.max(min, number));
+    }
+
+    function normalizeHexColor(value, fallback) {
+        var color = String(value || '').trim();
+        return /^#[0-9a-f]{6}$/i.test(color) ? color : fallback;
+    }
+
+    function renderTextStyle(style, fallback) {
+        var normalized = normalizeTextStyle(style, fallback);
+        var borderColor = escapeHtml(normalized.borderColor);
+        return 'font-size:' + normalized.size + 'rem;color:' + escapeHtml(normalized.textColor) + ';-webkit-text-stroke-color:' + borderColor + ';text-shadow:-0.03em 0 ' + borderColor + ',0.03em 0 ' + borderColor + ',0 -0.03em ' + borderColor + ',0 0.03em ' + borderColor + ';';
     }
 
     function normalizeCustomFont(font) {
@@ -353,16 +413,17 @@
 
         var shortcutsHtml = renderShortcuts(state.settings.shortcuts || []);
         var text = normalizeTextSettings(state.settings.text);
+        var styles = text.styles;
 
         setApp([
             shortcutsHtml,
             '<section class="countdown-shell">',
-            '<h1 class="age-label">' + escapeHtml(text.ageLabel) + '</h1>',
+            '<h1 class="age-label styled-dashboard-text" style="' + renderTextStyle(styles.ageLabel, DEFAULT_TEXT_STYLES.ageLabel) + '">' + escapeHtml(text.ageLabel) + '</h1>',
             '<h2 class="count"><span id="yearValue"></span><sup>.<span id="millisecondsValue"></span></sup></h2>',
             '<div class="countdownDiv">',
-            '<div class="countdownText">' + escapeHtml(text.countdownPrefix) + '</div>',
-            '<h2 id="remainingValue" class="countdown"></h2>',
-            '<div class="orLess">' + escapeHtml(text.countdownSuffix) + '</div>',
+            '<div class="countdownText styled-dashboard-text" style="' + renderTextStyle(styles.countdownPrefix, DEFAULT_TEXT_STYLES.countdownPrefix) + '">' + escapeHtml(text.countdownPrefix) + '</div>',
+            '<h2 id="remainingValue" class="countdown styled-dashboard-text" style="' + renderTextStyle(styles.countdownValue, DEFAULT_TEXT_STYLES.countdownValue) + '"></h2>',
+            '<div class="orLess styled-dashboard-text" style="' + renderTextStyle(styles.countdownSuffix, DEFAULT_TEXT_STYLES.countdownSuffix) + '">' + escapeHtml(text.countdownSuffix) + '</div>',
             '</div>',
             '</section>'
         ].join(''));
@@ -426,6 +487,7 @@
         var settings = state.settings;
         var shortcuts = settings.shortcuts || [];
         var text = normalizeTextSettings(settings.text);
+        var styles = text.styles;
 
         setApp([
             '<section class="settings-panel">',
@@ -450,12 +512,10 @@
             '<p class="field-info">Leave the icon empty to keep the current one.</p>',
             '<div class="settings-section">',
             '<h2>Main screen text</h2>',
-            '<label class="field-label" for="settingsAgeLabel">Age label</label>',
-            '<input id="settingsAgeLabel" name="ageLabel" type="text" maxlength="80" value="' + escapeHtml(text.ageLabel) + '" required>',
-            '<label class="field-label" for="settingsCountdownPrefix">Countdown lead-in</label>',
-            '<input id="settingsCountdownPrefix" name="countdownPrefix" type="text" maxlength="120" value="' + escapeHtml(text.countdownPrefix) + '" required>',
-            '<label class="field-label" for="settingsCountdownSuffix">Countdown footer</label>',
-            '<input id="settingsCountdownSuffix" name="countdownSuffix" type="text" maxlength="120" value="' + escapeHtml(text.countdownSuffix) + '" required>',
+            renderTextSettingControl('settingsAgeLabel', 'ageLabel', 'Age label', text.ageLabel, 80, styles.ageLabel),
+            renderTextSettingControl('settingsCountdownPrefix', 'countdownPrefix', 'Countdown lead-in', text.countdownPrefix, 120, styles.countdownPrefix),
+            renderTextSettingControl('settingsCountdownValue', 'countdownValue', 'Countdown number', '', 0, styles.countdownValue),
+            renderTextSettingControl('settingsCountdownSuffix', 'countdownSuffix', 'Countdown footer', text.countdownSuffix, 120, styles.countdownSuffix),
             '</div>',
             '<div class="settings-section">',
             '<h2>Main screen font</h2>',
@@ -471,9 +531,7 @@
             '</div>',
             '<div class="settings-action-bar">',
             '<div class="danger-zone">',
-            state.resetArmed
-                ? '<button class="danger-button active text-danger-button" type="button" data-action="openResetConfirm">Reset settings</button>'
-                : '<button class="danger-button" type="button" data-action="revealReset" aria-label="Warning" title="Warning"><i class="fa-solid fa-triangle-exclamation"></i></button>',
+            renderResetTrigger(),
             '</div>',
             '<div class="form-actions sticky-actions">',
             '<button class="primary-button" type="submit">Save</button>',
@@ -483,6 +541,45 @@
             '</form>',
             '</section>'
         ].join(''));
+    }
+
+    function renderResetTrigger() {
+        return state.resetArmed
+            ? '<button class="danger-button active text-danger-button toolbar-danger-button" type="button" data-action="openResetConfirm">Reset settings</button>'
+            : '<button class="danger-button" type="button" data-action="revealReset" aria-label="Warning" title="Warning"><i class="fa-solid fa-triangle-exclamation"></i></button>';
+    }
+
+    function disarmResetTrigger() {
+        state.resetArmed = false;
+        var dangerZone = document.querySelector('.danger-zone');
+        if (dangerZone) dangerZone.innerHTML = renderResetTrigger();
+    }
+
+    function renderTextSettingControl(id, name, label, value, maxLength, style) {
+        var normalized = normalizeTextStyle(style, DEFAULT_TEXT_STYLES[name]);
+        var textInput = maxLength > 0
+            ? [
+                '<label class="field-label" for="' + id + '">' + label + '</label>',
+                '<input id="' + id + '" name="' + name + '" type="text" maxlength="' + maxLength + '" value="' + escapeHtml(value) + '" required>'
+            ].join('')
+            : '<span class="field-label text-style-only">' + label + '</span>';
+
+        return [
+            '<div class="text-setting-row" data-text-control="' + escapeHtml(name) + '">',
+            '<div class="text-setting-input">',
+            textInput,
+            '</div>',
+            '<div class="text-style-controls">',
+            '<label class="mini-field-label" for="' + id + 'Size">Size</label>',
+            '<input id="' + id + 'Size" name="' + name + 'Size" class="text-size-slider" type="range" min="0.4" max="8" step="0.05" value="' + escapeHtml(normalized.size) + '">',
+            '<span class="text-size-value">' + escapeHtml(normalized.size.toFixed(2)) + 'rem</span>',
+            '<label class="mini-field-label" for="' + id + 'TextColor">Text</label>',
+            '<input id="' + id + 'TextColor" name="' + name + 'TextColor" class="color-circle small-color-circle" type="color" value="' + escapeHtml(normalized.textColor) + '">',
+            '<label class="mini-field-label" for="' + id + 'BorderColor">Border</label>',
+            '<input id="' + id + 'BorderColor" name="' + name + 'BorderColor" class="color-circle small-color-circle" type="color" value="' + escapeHtml(normalized.borderColor) + '">',
+            '</div>',
+            '</div>'
+        ].join('');
     }
 
     function renderSettingsShortcutRows(shortcuts) {
@@ -898,7 +995,8 @@
                 text: normalizeTextSettings({
                     ageLabel: fields.ageLabel.value.trim(),
                     countdownPrefix: fields.countdownPrefix.value.trim(),
-                    countdownSuffix: fields.countdownSuffix.value.trim()
+                    countdownSuffix: fields.countdownSuffix.value.trim(),
+                    styles: readTextStyleFields(fields)
                 }),
                 customFont: state.settings.customFont,
                 shortcuts: (state.settings.shortcuts || [])
@@ -932,6 +1030,11 @@
     });
 
     app.addEventListener('input', function (event) {
+        if (event.target.matches('.text-size-slider')) {
+            var valueLabel = event.target.parentElement.querySelector('.text-size-value');
+            if (valueLabel) valueLabel.textContent = Number(event.target.value).toFixed(2) + 'rem';
+        }
+
         if (!event.target.matches('[data-field]')) return;
 
         if (state.settings && event.target.closest('#settingsShortcuts')) {
@@ -943,6 +1046,23 @@
             updateShortcutFromInput(event.target, state.setupDraft.shortcuts);
         }
     });
+
+    function readTextStyleFields(fields) {
+        return {
+            ageLabel: readTextStyleField(fields, 'ageLabel', DEFAULT_TEXT_STYLES.ageLabel),
+            countdownPrefix: readTextStyleField(fields, 'countdownPrefix', DEFAULT_TEXT_STYLES.countdownPrefix),
+            countdownValue: readTextStyleField(fields, 'countdownValue', DEFAULT_TEXT_STYLES.countdownValue),
+            countdownSuffix: readTextStyleField(fields, 'countdownSuffix', DEFAULT_TEXT_STYLES.countdownSuffix)
+        };
+    }
+
+    function readTextStyleField(fields, name, defaults) {
+        return normalizeTextStyle({
+            size: fields[name + 'Size'] ? fields[name + 'Size'].value : defaults.size,
+            textColor: fields[name + 'TextColor'] ? fields[name + 'TextColor'].value : defaults.textColor,
+            borderColor: fields[name + 'BorderColor'] ? fields[name + 'BorderColor'].value : defaults.borderColor
+        }, defaults);
+    }
 
     app.addEventListener('pointerdown', function (event) {
         var handle = event.target.closest('.drag-handle');
@@ -1175,6 +1295,7 @@
 
         if (action === 'closeResetConfirm') {
             modalRoot.innerHTML = '';
+            disarmResetTrigger();
         }
 
         if (action === 'closeCounterReset') {
