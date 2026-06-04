@@ -980,6 +980,10 @@ input::file-selector-button {
     padding-top: 14px;
 }
 
+.icon-credit {
+    font-size: 0.72rem;
+}
+
 .compact-modal .form-actions .danger-button,
 .compact-modal .form-actions .ghost-button {
     width: 136px;

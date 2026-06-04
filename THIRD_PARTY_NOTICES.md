@@ -4,11 +4,13 @@ Memento includes third-party assets that retain their original licenses.
 
 ## Font Awesome Free
 
-Font Awesome Free 6.4.2 by Fonticons, Inc.
+Font Awesome Free 7.2.0 by Fonticons, Inc.
 
 License: https://fontawesome.com/license/free
 
 Icons are licensed under CC BY 4.0, fonts are licensed under SIL OFL 1.1, and code is licensed under the MIT License.
+
+The bundled Font Awesome license text is included at `assets/metadata/fontawesome-LICENSE.txt`.
 
 ## Lato
 

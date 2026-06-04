@@ -781,6 +781,7 @@
             '</div>',
             '<div class="modal-footer">',
             '<p id="iconCountText" class="field-info">' + filtered.visible.length + ' of ' + filtered.total + ' icons shown. Search to narrow the list.</p>',
+            '<p class="field-info icon-credit">Font Awesome Free icons by Fonticons, Inc.</p>',
             '<div class="form-actions">',
             '<button class="ghost-button" type="button" data-action="clearShortcutIcon">Clear icon</button>',
             '<button class="primary-button" type="button" data-action="applyShortcutIcon"' + (selectedIcon || customIcon ? '' : ' disabled') + '>Apply</button>',
