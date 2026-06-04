@@ -194,7 +194,7 @@ body.settings-open #app {
 }
 
 .count sup {
-    font-size: 2.4rem;
+    font-size: 0.4em;
     margin-left: 7px;
 }
 
@@ -1042,10 +1042,6 @@ input::file-selector-button {
 
     .count {
         font-size: 4.2rem;
-    }
-
-    .count sup {
-        font-size: 1.6rem;
     }
 
     .shortcut-row {

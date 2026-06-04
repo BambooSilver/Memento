@@ -14,6 +14,11 @@
             textColor: '#b0b5b9',
             borderColor: '#000000'
         },
+        ageCounter: {
+            size: 6,
+            textColor: '#494949',
+            borderColor: '#000000'
+        },
         countdownPrefix: {
             size: 1,
             textColor: '#b0b5b9',
@@ -102,6 +107,7 @@
         styles = styles || {};
         return {
             ageLabel: normalizeTextStyle(styles.ageLabel, DEFAULT_TEXT_STYLES.ageLabel),
+            ageCounter: normalizeTextStyle(styles.ageCounter, DEFAULT_TEXT_STYLES.ageCounter),
             countdownPrefix: normalizeTextStyle(styles.countdownPrefix, DEFAULT_TEXT_STYLES.countdownPrefix),
             countdownValue: normalizeTextStyle(styles.countdownValue, DEFAULT_TEXT_STYLES.countdownValue),
             countdownSuffix: normalizeTextStyle(styles.countdownSuffix, DEFAULT_TEXT_STYLES.countdownSuffix)
@@ -419,7 +425,7 @@
             shortcutsHtml,
             '<section class="countdown-shell">',
             '<h1 class="age-label styled-dashboard-text" style="' + renderTextStyle(styles.ageLabel, DEFAULT_TEXT_STYLES.ageLabel) + '">' + escapeHtml(text.ageLabel) + '</h1>',
-            '<h2 class="count"><span id="yearValue"></span><sup>.<span id="millisecondsValue"></span></sup></h2>',
+            '<h2 class="count styled-dashboard-text" style="' + renderTextStyle(styles.ageCounter, DEFAULT_TEXT_STYLES.ageCounter) + '"><span id="yearValue"></span><sup>.<span id="millisecondsValue"></span></sup></h2>',
             '<div class="countdownDiv">',
             '<div class="countdownText styled-dashboard-text" style="' + renderTextStyle(styles.countdownPrefix, DEFAULT_TEXT_STYLES.countdownPrefix) + '">' + escapeHtml(text.countdownPrefix) + '</div>',
             '<h2 id="remainingValue" class="countdown styled-dashboard-text" style="' + renderTextStyle(styles.countdownValue, DEFAULT_TEXT_STYLES.countdownValue) + '"></h2>',
@@ -513,6 +519,7 @@
             '<div class="settings-section">',
             '<h2>Main screen text</h2>',
             renderTextSettingControl('settingsAgeLabel', 'ageLabel', 'Age label', text.ageLabel, 80, styles.ageLabel),
+            renderTextSettingControl('settingsAgeCounter', 'ageCounter', 'Age counter', '', 0, styles.ageCounter),
             renderTextSettingControl('settingsCountdownPrefix', 'countdownPrefix', 'Countdown lead-in', text.countdownPrefix, 120, styles.countdownPrefix),
             renderTextSettingControl('settingsCountdownValue', 'countdownValue', 'Countdown number', '', 0, styles.countdownValue),
             renderTextSettingControl('settingsCountdownSuffix', 'countdownSuffix', 'Countdown footer', text.countdownSuffix, 120, styles.countdownSuffix),
@@ -1057,6 +1064,7 @@
     function readTextStyleFields(fields) {
         return {
             ageLabel: readTextStyleField(fields, 'ageLabel', DEFAULT_TEXT_STYLES.ageLabel),
+            ageCounter: readTextStyleField(fields, 'ageCounter', DEFAULT_TEXT_STYLES.ageCounter),
             countdownPrefix: readTextStyleField(fields, 'countdownPrefix', DEFAULT_TEXT_STYLES.countdownPrefix),
             countdownValue: readTextStyleField(fields, 'countdownValue', DEFAULT_TEXT_STYLES.countdownValue),
             countdownSuffix: readTextStyleField(fields, 'countdownSuffix', DEFAULT_TEXT_STYLES.countdownSuffix)
