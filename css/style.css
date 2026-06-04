@@ -53,6 +53,10 @@ body.settings-open {
     overflow-y: auto;
 }
 
+body.modal-open {
+    overflow: hidden;
+}
+
 button,
 input,
 textarea {
@@ -791,6 +795,7 @@ input::file-selector-button {
     display: flex;
     inset: 0;
     justify-content: center;
+    overscroll-behavior: contain;
     padding: 28px;
     position: fixed;
     z-index: 10;
@@ -809,6 +814,12 @@ input::file-selector-button {
 
 .compact-modal {
     width: min(460px, calc(100vw - 56px));
+}
+
+.icon-picker-modal {
+    display: flex;
+    flex-direction: column;
+    height: min(760px, calc(100vh - 56px));
 }
 
 .modal-header,
@@ -880,9 +891,10 @@ input::file-selector-button {
 
 .icon-picker-layout {
     display: grid;
+    flex: 1 1 auto;
     gap: 16px;
     grid-template-columns: 1fr 210px;
-    min-height: 320px;
+    min-height: 0;
 }
 
 .icon-grid {
@@ -890,8 +902,10 @@ input::file-selector-button {
     display: grid;
     gap: 8px;
     grid-template-columns: repeat(auto-fill, minmax(82px, 1fr));
-    max-height: 390px;
+    height: 100%;
+    min-height: 320px;
     overflow: auto;
+    overscroll-behavior: contain;
     padding-right: 4px;
 }
 
@@ -1085,6 +1099,10 @@ input::file-selector-button {
         width: calc(100vw - 32px);
     }
 
+    .icon-picker-modal {
+        height: calc(100vh - 32px);
+    }
+
     .upload-strip,
     .icon-picker-layout,
     .modal-footer {
@@ -1092,11 +1110,12 @@ input::file-selector-button {
     }
 
     .icon-picker-layout {
+        flex: 1 1 auto;
         min-height: 0;
     }
 
     .icon-grid {
-        max-height: 300px;
+        min-height: 260px;
     }
 
     .icon-personalizer {

@@ -263,6 +263,12 @@
         state.iconSearch = '';
         state.iconDraft = null;
         modalRoot.innerHTML = '';
+        document.body.classList.remove('modal-open');
+    }
+
+    function setModal(html) {
+        modalRoot.innerHTML = html;
+        document.body.classList.add('modal-open');
     }
 
     function render() {
@@ -688,7 +694,7 @@
                 callback();
             })
             .catch(function (error) {
-                modalRoot.innerHTML = [
+                setModal([
                     '<div class="modal-backdrop">',
                     '<section class="glass-modal compact-modal">',
                     '<button class="icon-button modal-close" type="button" data-action="closeIconPicker" aria-label="Close icon picker"><i class="fa-solid fa-xmark"></i></button>',
@@ -697,7 +703,7 @@
                     '<p class="field-info">' + escapeHtml(error.message) + '</p>',
                     '</section>',
                     '</div>'
-                ].join('');
+                ].join(''));
             });
     }
 
@@ -743,9 +749,9 @@
         var selectedColor = state.iconDraft && state.iconDraft.color ? state.iconDraft.color : '#353d3f';
         var filtered = getFilteredIcons();
 
-        modalRoot.innerHTML = [
+        setModal([
             '<div class="modal-backdrop">',
-            '<section class="glass-modal" role="dialog" aria-modal="true" aria-labelledby="iconPickerTitle">',
+            '<section class="glass-modal icon-picker-modal" role="dialog" aria-modal="true" aria-labelledby="iconPickerTitle">',
             '<div class="modal-header">',
             '<div>',
             '<p class="setup-kicker">Shortcut icon</p>',
@@ -789,7 +795,7 @@
             '</div>',
             '</section>',
             '</div>'
-        ].join('');
+        ].join(''));
     }
 
     function getFilteredIcons() {
@@ -884,7 +890,7 @@
     }
 
     function renderResetConfirm() {
-        modalRoot.innerHTML = [
+        setModal([
             '<div class="modal-backdrop">',
             '<section class="glass-modal compact-modal" role="dialog" aria-modal="true" aria-labelledby="resetTitle">',
             '<div class="modal-header">',
@@ -901,7 +907,7 @@
             '</div>',
             '</section>',
             '</div>'
-        ].join('');
+        ].join(''));
     }
 
     function renderCounterResetConfirm(row) {
@@ -913,7 +919,7 @@
         if (!shortcut) return;
         state.counterResetTarget = shortcutId;
 
-        modalRoot.innerHTML = [
+        setModal([
             '<div class="modal-backdrop">',
             '<section class="glass-modal compact-modal" role="dialog" aria-modal="true" aria-labelledby="counterResetTitle">',
             '<div class="modal-header">',
@@ -930,13 +936,13 @@
             '</div>',
             '</section>',
             '</div>'
-        ].join('');
+        ].join(''));
     }
 
     function renderAllCountersResetConfirm() {
         state.counterResetTarget = 'all';
 
-        modalRoot.innerHTML = [
+        setModal([
             '<div class="modal-backdrop">',
             '<section class="glass-modal compact-modal" role="dialog" aria-modal="true" aria-labelledby="allCountersResetTitle">',
             '<div class="modal-header">',
@@ -953,7 +959,7 @@
             '</div>',
             '</section>',
             '</div>'
-        ].join('');
+        ].join(''));
     }
 
     function createShortcut() {
@@ -1332,13 +1338,13 @@
         }
 
         if (action === 'closeResetConfirm') {
-            modalRoot.innerHTML = '';
+            clearModal();
             disarmResetTrigger();
         }
 
         if (action === 'closeCounterReset') {
             state.counterResetTarget = null;
-            modalRoot.innerHTML = '';
+            clearModal();
         }
 
         if (action === 'confirmResetSettings') {
@@ -1348,7 +1354,7 @@
             state.setupDraft = {};
             state.resetArmed = false;
             customFontStyle.textContent = '';
-            modalRoot.innerHTML = '';
+            clearModal();
             document.body.classList.remove('settings-open');
             render();
         }
@@ -1365,7 +1371,7 @@
             }
 
             state.counterResetTarget = null;
-            modalRoot.innerHTML = '';
+            clearModal();
         }
 
         if (action === 'confirmAllCountersReset') {
@@ -1378,7 +1384,7 @@
             }
 
             state.counterResetTarget = null;
-            modalRoot.innerHTML = '';
+            clearModal();
         }
 
         if (action === 'selectIcon') {
