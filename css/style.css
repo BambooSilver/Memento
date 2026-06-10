@@ -85,6 +85,10 @@ button:disabled {
     width: min(100%, 980px);
 }
 
+body:not(.settings-open) #app {
+    width: 100vw;
+}
+
 body.settings-open #app {
     justify-content: flex-start;
     min-height: auto;
@@ -212,10 +216,20 @@ body.settings-open #app {
     justify-content: center;
 }
 
-.dashboard-object {
-    left: 50vw;
+.dashboard-stage {
+    height: 1440px;
+    left: 50%;
     position: fixed;
-    top: 50vh;
+    top: 50%;
+    transform: translate(-50%, -50%) scale(var(--dashboard-scale, 1));
+    transform-origin: center;
+    width: 2560px;
+}
+
+.dashboard-object {
+    left: 50%;
+    position: absolute;
+    top: 50%;
     transform: translate(-50%, -50%);
     z-index: 1;
 }
@@ -704,12 +718,15 @@ input::file-selector-button {
     display: flex;
     flex-direction: column;
     gap: 10px;
-    margin-top: 10px;
-    padding-top: 14px;
+    margin-top: 22px;
+    padding-top: 24px;
+    position: relative;
 }
 
 .settings-shortcuts {
-    margin-top: 12px;
+    border-top: 1px solid rgba(53, 61, 63, 0.65);
+    margin-top: 22px;
+    padding-top: 24px;
 }
 
 .ribbon-settings-list {
@@ -747,16 +764,10 @@ input::file-selector-button {
 }
 
 .shortcut-ribbon-settings-group {
-    border-top: 1px solid rgba(53, 61, 63, 0.65);
     display: flex;
     flex-direction: column;
     gap: 10px;
-    padding-top: 12px;
-}
-
-.shortcut-ribbon-settings-group:first-child {
-    border-top: 0;
-    padding-top: 0;
+    padding-top: 6px;
 }
 
 .shortcut-ribbon-settings-group h3 {
@@ -783,8 +794,12 @@ input::file-selector-button {
 .settings-subhead h2,
 .settings-section h2 {
     color: #b0b5b9;
-    font-size: 0.95rem;
+    font-size: 1.12rem;
+    font-weight: 900;
+    line-height: 1;
     margin: 0;
+    position: relative;
+    transform: translateX(-28px);
 }
 
 .text-setting-row {
@@ -1290,6 +1305,11 @@ input::file-selector-button {
 
     .settings-panel {
         padding-bottom: 120px;
+    }
+
+    .settings-subhead h2,
+    .settings-section h2 {
+        transform: none;
     }
 
     .settings-action-bar {

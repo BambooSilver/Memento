@@ -40,6 +40,10 @@
         name: '',
         borderColor: '#d8d2c2'
     };
+    var DASHBOARD_STAGE = {
+        width: 2560,
+        height: 1440
+    };
     var DEFAULT_LAYOUT = {
         ribbon: { x: 50, y: 21 },
         ageLabel: { x: 50, y: 40 },
@@ -513,6 +517,7 @@
         var styles = text.styles;
 
         setApp([
+            '<div class="dashboard-stage">',
             shortcutsHtml,
             '<section class="countdown-shell" aria-label="Life countdown">',
             renderDashboardObject('ageLabel', '<h1 class="age-label styled-dashboard-text" style="' + renderTextStyle(styles.ageLabel, DEFAULT_TEXT_STYLES.ageLabel) + '">' + escapeHtml(text.ageLabel) + '</h1>', layout.ageLabel),
@@ -521,10 +526,17 @@
             renderDashboardObject('countdownValue', '<h2 id="remainingValue" class="countdown styled-dashboard-text" style="' + renderTextStyle(styles.countdownValue, DEFAULT_TEXT_STYLES.countdownValue) + '"></h2>', layout.countdownValue),
             renderDashboardObject('countdownSuffix', '<div class="orLess styled-dashboard-text" style="' + renderTextStyle(styles.countdownSuffix, DEFAULT_TEXT_STYLES.countdownSuffix) + '">' + escapeHtml(text.countdownSuffix) + '</div>', layout.countdownSuffix),
             '</section>',
+            '</div>',
             state.customization ? renderCustomizationToast() : ''
         ].join(''));
 
+        updateDashboardScale();
         updateDashboardTime();
+    }
+
+    function updateDashboardScale() {
+        var scale = Math.min(window.innerWidth / DASHBOARD_STAGE.width, window.innerHeight / DASHBOARD_STAGE.height);
+        document.documentElement.style.setProperty('--dashboard-scale', String(Math.max(scale, 0.1)));
     }
 
     function renderDashboardObject(key, html, point) {
@@ -539,7 +551,7 @@
 
     function renderLayoutPoint(point) {
         point = normalizeLayoutPoint(point, { x: 50, y: 50 });
-        return 'left:' + point.x + 'vw;top:' + point.y + 'vh;';
+        return 'left:' + point.x + '%;top:' + point.y + '%;';
     }
 
     function renderCustomizationToast() {
@@ -1532,6 +1544,17 @@
         if (borderColor) borderColor.value = defaults.borderColor;
     }
 
+    function getDashboardStageRect() {
+        var stage = document.querySelector('.dashboard-stage');
+        if (stage) return stage.getBoundingClientRect();
+        return {
+            left: 0,
+            top: 0,
+            width: window.innerWidth,
+            height: window.innerHeight
+        };
+    }
+
     app.addEventListener('pointerdown', function (event) {
         if (state.customization) {
             var object = event.target.closest('.customization-object');
@@ -1542,7 +1565,9 @@
                     object: object,
                     key: key,
                     offsetX: event.clientX - rect.left,
-                    offsetY: event.clientY - rect.top
+                    offsetY: event.clientY - rect.top,
+                    objectWidth: rect.width,
+                    objectHeight: rect.height
                 };
                 object.classList.add('customization-object-dragging');
                 object.setPointerCapture && object.setPointerCapture(event.pointerId);
@@ -1587,11 +1612,12 @@
     document.addEventListener('pointermove', function (event) {
         if (state.customization && state.customization.drag) {
             var layoutDrag = state.customization.drag;
-            var x = clampNumber(((event.clientX - layoutDrag.offsetX + layoutDrag.object.offsetWidth / 2) / window.innerWidth) * 100, 2, 98, 50);
-            var y = clampNumber(((event.clientY - layoutDrag.offsetY + layoutDrag.object.offsetHeight / 2) / window.innerHeight) * 100, 2, 98, 50);
+            var currentStageRect = getDashboardStageRect();
+            var x = clampNumber(((event.clientX - layoutDrag.offsetX + layoutDrag.objectWidth / 2 - currentStageRect.left) / currentStageRect.width) * 100, 2, 98, 50);
+            var y = clampNumber(((event.clientY - layoutDrag.offsetY + layoutDrag.objectHeight / 2 - currentStageRect.top) / currentStageRect.height) * 100, 2, 98, 50);
             state.customization.draftLayout[layoutDrag.key] = { x: x, y: y };
-            layoutDrag.object.style.left = x + 'vw';
-            layoutDrag.object.style.top = y + 'vh';
+            layoutDrag.object.style.left = x + '%';
+            layoutDrag.object.style.top = y + '%';
             event.preventDefault();
             return;
         }
@@ -1949,6 +1975,9 @@
     });
 
     settingsButton.addEventListener('click', renderSettings);
+    window.addEventListener('resize', function () {
+        if (!document.body.classList.contains('settings-open')) updateDashboardScale();
+    });
 
     render();
 })();
