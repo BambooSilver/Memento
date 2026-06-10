@@ -110,14 +110,27 @@ body.settings-open #app {
     position: relative;
 }
 
+.shortcut-ribbon.has-title {
+    padding-top: 18px;
+}
+
 .ribbon-title {
+    background: var(--ribbon-title-bg, #050505);
     color: #575f62;
-    flex: 0 0 100%;
     font-size: 0.72rem;
     font-weight: 700;
+    left: 50%;
     line-height: 1;
+    max-width: calc(100% - 48px);
+    overflow: hidden;
+    padding: 0 18px;
+    position: absolute;
     text-align: center;
+    text-overflow: ellipsis;
+    top: -0.45rem;
+    transform: translateX(-50%);
     text-transform: uppercase;
+    white-space: nowrap;
 }
 
 .ribbon-empty-note {
@@ -657,6 +670,13 @@ input::file-selector-button {
     justify-content: space-between;
 }
 
+.inline-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
 .settings-header {
     margin-bottom: 24px;
 }
@@ -690,6 +710,74 @@ input::file-selector-button {
 
 .settings-shortcuts {
     margin-top: 12px;
+}
+
+.ribbon-settings-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.ribbon-settings-row {
+    align-items: center;
+    display: grid;
+    gap: 10px;
+    grid-template-columns: 34px minmax(180px, 1fr) auto 38px 38px;
+}
+
+.ribbon-settings-index {
+    align-items: center;
+    background: #050505;
+    border: 1px solid #353d3f;
+    border-radius: 8px;
+    color: #575f62;
+    display: inline-flex;
+    font-size: 0.72rem;
+    font-weight: 700;
+    height: 38px;
+    justify-content: center;
+}
+
+.ribbon-color-label {
+    justify-self: end;
+}
+
+.shortcut-groups {
+    gap: 16px;
+}
+
+.shortcut-ribbon-settings-group {
+    border-top: 1px solid rgba(53, 61, 63, 0.65);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-top: 12px;
+}
+
+.shortcut-ribbon-settings-group:first-child {
+    border-top: 0;
+    padding-top: 0;
+}
+
+.shortcut-ribbon-settings-group h3 {
+    color: #b0b5b9;
+    font-size: 0.82rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+.shortcut-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-height: 46px;
+}
+
+.ribbon-shortcut-empty {
+    border: 1px dashed rgba(53, 61, 63, 0.5);
+    border-radius: 8px;
+    margin: 0;
+    padding: 12px;
 }
 
 .settings-subhead h2,
@@ -1215,6 +1303,14 @@ input::file-selector-button {
 
     .text-style-controls {
         grid-template-columns: auto minmax(50px, 1fr) 70px auto 28px auto 28px 30px;
+    }
+
+    .ribbon-settings-row {
+        grid-template-columns: 34px 1fr 38px 38px;
+    }
+
+    .ribbon-color-label {
+        display: none;
     }
 
     .shortcut-space {

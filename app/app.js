@@ -36,6 +36,7 @@
         }
     };
     var DEFAULT_RIBBON = {
+        id: 'default',
         name: '',
         borderColor: '#d8d2c2'
     };
@@ -82,10 +83,11 @@
                     title: saved.title || 'Memento',
                     icon: saved.icon || '',
                     text: normalizeTextSettings(saved.text),
+                    ribbons: normalizeRibbonsSettings(saved.ribbons, saved.ribbon),
                     ribbon: normalizeRibbonSettings(saved.ribbon),
                     layout: normalizeLayoutSettings(saved.layout),
                     customFont: normalizeCustomFont(saved.customFont),
-                    shortcuts: Array.isArray(saved.shortcuts) ? saved.shortcuts.map(normalizeShortcut) : []
+                    shortcuts: normalizeShortcutsSettings(saved.shortcuts, saved.ribbons, saved.ribbon)
                 };
             }
         } catch (error) {
@@ -95,7 +97,7 @@
         return null;
     }
 
-    function normalizeShortcut(shortcut) {
+    function normalizeShortcut(shortcut, fallbackRibbonId) {
         return {
             id: shortcut.id || createId(),
             name: shortcut.name || '',
@@ -104,8 +106,25 @@
             iconClass: shortcut.iconClass || '',
             customIcon: shortcut.customIcon || '',
             color: shortcut.color || '#353d3f',
-            countClicks: shortcut.countClicks !== false
+            countClicks: shortcut.countClicks !== false,
+            ribbonId: shortcut.ribbonId || fallbackRibbonId || DEFAULT_RIBBON.id
         };
+    }
+
+    function normalizeShortcutsSettings(shortcuts, ribbons, legacyRibbon) {
+        if (!Array.isArray(shortcuts)) return [];
+
+        var normalizedRibbons = normalizeRibbonsSettings(ribbons, legacyRibbon);
+        var fallbackRibbonId = normalizedRibbons[0].id;
+        var ribbonIds = normalizedRibbons.map(function (ribbon) {
+            return ribbon.id;
+        });
+
+        return shortcuts.map(function (shortcut) {
+            var normalized = normalizeShortcut(shortcut, fallbackRibbonId);
+            if (ribbonIds.indexOf(normalized.ribbonId) === -1) normalized.ribbonId = fallbackRibbonId;
+            return normalized;
+        });
     }
 
     function normalizeTextSettings(text) {
@@ -121,9 +140,23 @@
     function normalizeRibbonSettings(ribbon) {
         ribbon = ribbon || {};
         return {
+            id: ribbon.id || createId(),
             name: ribbon.name || DEFAULT_RIBBON.name,
             borderColor: normalizeHexColor(ribbon.borderColor, DEFAULT_RIBBON.borderColor)
         };
+    }
+
+    function normalizeRibbonsSettings(ribbons, legacyRibbon) {
+        var source = Array.isArray(ribbons) && ribbons.length ? ribbons : [legacyRibbon || DEFAULT_RIBBON];
+        var seen = {};
+        var normalized = source.map(function (ribbon) {
+            var item = normalizeRibbonSettings(ribbon);
+            if (seen[item.id]) item.id = createId();
+            seen[item.id] = true;
+            return item;
+        });
+
+        return normalized.length ? normalized : [normalizeRibbonSettings(DEFAULT_RIBBON)];
     }
 
     function normalizeLayoutSettings(layout) {
@@ -131,6 +164,11 @@
         var normalized = {};
         Object.keys(DEFAULT_LAYOUT).forEach(function (key) {
             normalized[key] = normalizeLayoutPoint(layout[key], DEFAULT_LAYOUT[key]);
+        });
+        Object.keys(layout).forEach(function (key) {
+            if (key.indexOf('ribbon-') === 0) {
+                normalized[key] = normalizeLayoutPoint(layout[key], DEFAULT_LAYOUT.ribbon);
+            }
         });
         return normalized;
     }
@@ -443,7 +481,8 @@
                         iconClass: shortcut.iconClass || '',
                         customIcon: shortcut.customIcon || '',
                         color: shortcut.color || '#353d3f',
-                        countClicks: shortcut.countClicks !== false
+                        countClicks: shortcut.countClicks !== false,
+                        ribbonId: DEFAULT_RIBBON.id
                     };
             })
             .filter(function (shortcut) {
@@ -456,7 +495,8 @@
             title: state.setupDraft.title || 'Memento',
             icon: state.setupDraft.icon || '',
             text: normalizeTextSettings(state.setupDraft.text),
-            ribbon: normalizeRibbonSettings(null),
+            ribbons: normalizeRibbonsSettings(null),
+            ribbon: normalizeRibbonSettings(DEFAULT_RIBBON),
             layout: normalizeLayoutSettings(null),
             customFont: null,
             shortcuts: shortcuts
@@ -467,7 +507,8 @@
         if (!state.settings) return;
 
         var layout = state.customization ? state.customization.draftLayout : normalizeLayoutSettings(state.settings.layout);
-        var shortcutsHtml = renderDashboardObject('ribbon', renderShortcuts(state.settings.shortcuts || []), layout.ribbon);
+        var ribbons = getSettingsRibbons();
+        var shortcutsHtml = renderShortcutRibbons(ribbons, state.settings.shortcuts || [], layout);
         var text = normalizeTextSettings(state.settings.text);
         var styles = text.styles;
 
@@ -533,13 +574,27 @@
         return new Date(parts[0], parts[1] - 1, parts[2]);
     }
 
-    function renderShortcuts(shortcuts) {
-        var ribbon = normalizeRibbonSettings(state.settings && state.settings.ribbon);
-        if (!shortcuts.length && !ribbon.name && !state.customization) return '<div class="shortcut-space" aria-hidden="true"></div>';
+    function renderShortcutRibbons(ribbons, shortcuts, layout) {
+        if (!shortcuts.length && !ribbons.some(function (ribbon) { return ribbon.name; }) && !state.customization) {
+            return '<div class="shortcut-space" aria-hidden="true"></div>';
+        }
 
+        return ribbons.map(function (ribbon, index) {
+            var ribbonShortcuts = shortcuts.filter(function (shortcut) {
+                return shortcut.ribbonId === ribbon.id;
+            });
+            if (!ribbonShortcuts.length && !ribbon.name && !state.customization) return '';
+
+            var key = getRibbonLayoutKey(ribbon);
+            var point = layout[key] || (index === 0 ? layout.ribbon : null) || getDefaultRibbonPoint(index);
+            return renderDashboardObject(key, renderShortcutRibbon(ribbon, ribbonShortcuts), point);
+        }).join('');
+    }
+
+    function renderShortcutRibbon(ribbon, shortcuts) {
         return [
-            '<nav class="shortcut-ribbon" aria-label="Shortcuts" style="border-color:' + escapeHtml(ribbon.borderColor) + '">',
-            ribbon.name ? '<div class="ribbon-title">' + escapeHtml(ribbon.name) + '</div>' : '',
+            '<nav class="shortcut-ribbon' + (ribbon.name ? ' has-title' : '') + '" aria-label="' + escapeHtml(ribbon.name || 'Shortcuts') + '" style="border-color:' + escapeHtml(ribbon.borderColor) + '">',
+            ribbon.name ? '<div class="ribbon-title" style="--ribbon-title-bg:#050505">' + escapeHtml(ribbon.name) + '</div>' : '',
             shortcuts.length ? [
             shortcuts.map(function (shortcut) {
                 var initial = escapeHtml(shortcut.name.charAt(0).toUpperCase());
@@ -563,16 +618,57 @@
         ].join('');
     }
 
+    function getSettingsRibbons() {
+        return normalizeRibbonsSettings(state.settings && state.settings.ribbons, state.settings && state.settings.ribbon);
+    }
+
+    function ensureShortcutRibbonAssignments(shortcuts, ribbons) {
+        ribbons = ribbons && ribbons.length ? ribbons : [normalizeRibbonSettings(DEFAULT_RIBBON)];
+        var fallbackRibbonId = ribbons[0].id;
+        var ribbonIds = ribbons.map(function (ribbon) {
+            return ribbon.id;
+        });
+
+        return (shortcuts || []).map(function (shortcut) {
+            shortcut.ribbonId = ribbonIds.indexOf(shortcut.ribbonId) === -1 ? fallbackRibbonId : shortcut.ribbonId;
+            return shortcut;
+        });
+    }
+
+    function getNextRibbonIdAfterRemoval(removedRibbonId, ribbons) {
+        var index = ribbons.findIndex(function (ribbon) {
+            return ribbon.id === removedRibbonId;
+        });
+        var remaining = ribbons.filter(function (ribbon) {
+            return ribbon.id !== removedRibbonId;
+        });
+        if (!remaining.length) return removedRibbonId;
+        return (remaining[index] || remaining[index - 1] || remaining[0]).id;
+    }
+
+    function getRibbonLayoutKey(ribbon) {
+        return 'ribbon-' + ribbon.id;
+    }
+
+    function getDefaultRibbonPoint(index) {
+        return {
+            x: DEFAULT_LAYOUT.ribbon.x,
+            y: clampNumber(DEFAULT_LAYOUT.ribbon.y + (index * 13), 2, 98, DEFAULT_LAYOUT.ribbon.y)
+        };
+    }
+
     function renderSettings() {
         stopLoop();
         document.body.classList.add('settings-open');
         settingsButton.hidden = true;
 
         var settings = state.settings;
-        var shortcuts = settings.shortcuts || [];
+        var ribbons = getSettingsRibbons();
+        var shortcuts = ensureShortcutRibbonAssignments(settings.shortcuts || [], ribbons);
         var text = normalizeTextSettings(settings.text);
         var styles = text.styles;
-        var ribbon = normalizeRibbonSettings(settings.ribbon);
+        settings.ribbons = ribbons;
+        settings.shortcuts = shortcuts;
 
         setApp([
             '<section class="settings-panel">',
@@ -611,19 +707,19 @@
             '<div class="settings-section">',
             '<div class="settings-subhead">',
             '<h2>Ribbon</h2>',
+            '<div class="inline-actions">',
+            '<button class="ghost-button" type="button" data-action="addRibbon">Add ribbon</button>',
             '<button class="ghost-button" type="button" data-action="startCustomization">Change positions</button>',
             '</div>',
-            '<label class="field-label" for="settingsRibbonName">Ribbon name</label>',
-            '<input id="settingsRibbonName" name="ribbonName" type="text" maxlength="80" value="' + escapeHtml(ribbon.name) + '" placeholder="Shortcuts">',
-            '<label class="field-label" for="settingsRibbonBorderColor">Ribbon border color</label>',
-            '<input id="settingsRibbonBorderColor" name="ribbonBorderColor" class="color-circle settings-color-circle" type="color" value="' + escapeHtml(ribbon.borderColor) + '">',
+            '</div>',
+            '<div id="settingsRibbons" class="ribbon-settings-list">' + renderRibbonSettingsRows(ribbons) + '</div>',
             '</div>',
             '<div class="settings-shortcuts">',
             '<div class="settings-subhead">',
             '<h2>Shortcuts</h2>',
             '<button class="ghost-button" type="button" data-action="addSettingsShortcut">Add</button>',
             '</div>',
-            '<div id="settingsShortcuts" class="shortcut-drafts">' + renderSettingsShortcutRows(shortcuts) + '</div>',
+            '<div id="settingsShortcuts" class="shortcut-drafts shortcut-groups">' + renderSettingsShortcutRows(shortcuts, ribbons) + '</div>',
             '</div>',
             '<div class="settings-action-bar">',
             '<div class="danger-zone">',
@@ -679,10 +775,35 @@
         ].join('');
     }
 
-    function renderSettingsShortcutRows(shortcuts) {
+    function renderRibbonSettingsRows(ribbons) {
+        return ribbons.map(function (ribbon, index) {
+            return [
+                '<div class="ribbon-settings-row" data-ribbon-id="' + escapeHtml(ribbon.id) + '">',
+                '<span class="ribbon-settings-index">' + escapeHtml(String(index + 1)) + '</span>',
+                '<input type="text" data-ribbon-field="name" maxlength="80" value="' + escapeHtml(ribbon.name) + '" placeholder="Ribbon name">',
+                '<label class="mini-field-label ribbon-color-label">Border</label>',
+                '<input data-ribbon-field="borderColor" class="color-circle settings-color-circle" type="color" value="' + escapeHtml(ribbon.borderColor) + '">',
+                '<button class="icon-button" type="button" data-action="removeRibbon" title="Remove ribbon" aria-label="Remove ribbon"' + (ribbons.length <= 1 ? ' disabled' : '') + '>',
+                '<i class="fa-solid fa-xmark"></i>',
+                '</button>',
+                '</div>'
+            ].join('');
+        }).join('');
+    }
+
+    function renderSettingsShortcutRows(shortcuts, ribbons) {
         if (!shortcuts.length) return '<p class="empty-note">No shortcuts added.</p>';
 
-        return renderCounterBulkControls('settings') + shortcuts.map(function (shortcut) {
+        ribbons = ribbons || getSettingsRibbons();
+        return renderCounterBulkControls('settings') + ribbons.map(function (ribbon) {
+            var ribbonShortcuts = shortcuts.filter(function (shortcut) {
+                return shortcut.ribbonId === ribbon.id;
+            });
+            return [
+                '<section class="shortcut-ribbon-settings-group" data-ribbon-id="' + escapeHtml(ribbon.id) + '">',
+                '<h3>' + escapeHtml(ribbon.name || 'Ribbon') + '</h3>',
+                '<div class="shortcut-list" data-ribbon-id="' + escapeHtml(ribbon.id) + '">',
+                ribbonShortcuts.length ? ribbonShortcuts.map(function (shortcut) {
             return [
                 '<div class="shortcut-row" data-id="' + escapeHtml(shortcut.id) + '">',
                 renderShortcutDragHandle(),
@@ -697,6 +818,10 @@
                 '<i class="fa-solid fa-xmark"></i>',
                 '</button>',
                 '</div>'
+            ].join('');
+                }).join('') : '<p class="empty-note ribbon-shortcut-empty">No shortcuts in this ribbon.</p>',
+                '</div>',
+                '</section>'
             ].join('');
         }).join('');
     }
@@ -934,6 +1059,42 @@
         shortcut[input.getAttribute('data-field')] = input.value;
     }
 
+    function readRibbonSettingsFromForm() {
+        var rows = Array.prototype.slice.call(document.querySelectorAll('#settingsRibbons .ribbon-settings-row'));
+        var ribbons = rows.map(function (row) {
+            return normalizeRibbonSettings({
+                id: row.getAttribute('data-ribbon-id'),
+                name: (row.querySelector('[data-ribbon-field="name"]') || {}).value || '',
+                borderColor: (row.querySelector('[data-ribbon-field="borderColor"]') || {}).value || DEFAULT_RIBBON.borderColor
+            });
+        });
+
+        return normalizeRibbonsSettings(ribbons);
+    }
+
+    function updateRibbonFromInput(input) {
+        var row = input.closest('.ribbon-settings-row');
+        if (!row) return;
+
+        var ribbonId = row.getAttribute('data-ribbon-id');
+        var ribbon = (state.settings.ribbons || []).find(function (item) {
+            return item.id === ribbonId;
+        });
+        if (!ribbon) return;
+
+        if (input.getAttribute('data-ribbon-field') === 'name') {
+            ribbon.name = input.value;
+            var group = Array.prototype.slice.call(document.querySelectorAll('.shortcut-ribbon-settings-group')).find(function (item) {
+                return item.getAttribute('data-ribbon-id') === ribbonId;
+            });
+            var heading = group && group.querySelector('h3');
+            if (heading) heading.textContent = input.value.trim() || 'Ribbon';
+            return;
+        }
+
+        ribbon.borderColor = normalizeHexColor(input.value, DEFAULT_RIBBON.borderColor);
+    }
+
     function validateSettingsShortcuts() {
         var rows = Array.prototype.slice.call(document.querySelectorAll('#settingsShortcuts .shortcut-row'));
         var messages = [];
@@ -1042,10 +1203,15 @@
     }
 
     function commitShortcutOrder(source, list) {
+        if (source === 'settings') {
+            commitSettingsShortcutOrder();
+            return;
+        }
+
         var ids = Array.prototype.slice.call(list.querySelectorAll('.shortcut-row')).map(function (row) {
             return row.getAttribute('data-id');
         });
-        var shortcuts = source === 'settings' ? state.settings.shortcuts : state.setupDraft.shortcuts;
+        var shortcuts = state.setupDraft.shortcuts;
         var byId = {};
 
         shortcuts.forEach(function (shortcut) {
@@ -1056,13 +1222,29 @@
             return byId[id];
         }).filter(Boolean);
 
-        if (source === 'settings') {
-            state.settings.shortcuts = ordered;
-            document.getElementById('settingsShortcuts').innerHTML = renderSettingsShortcutRows(state.settings.shortcuts);
-        } else {
-            state.setupDraft.shortcuts = ordered;
-            renderShortcutDrafts();
-        }
+        state.setupDraft.shortcuts = ordered;
+        renderShortcutDrafts();
+    }
+
+    function commitSettingsShortcutOrder() {
+        var byId = {};
+        state.settings.shortcuts.forEach(function (shortcut) {
+            byId[shortcut.id] = shortcut;
+        });
+
+        var ordered = [];
+        Array.prototype.slice.call(document.querySelectorAll('#settingsShortcuts .shortcut-list')).forEach(function (list) {
+            var ribbonId = list.getAttribute('data-ribbon-id');
+            Array.prototype.slice.call(list.querySelectorAll('.shortcut-row')).forEach(function (row) {
+                var shortcut = byId[row.getAttribute('data-id')];
+                if (!shortcut) return;
+                shortcut.ribbonId = ribbonId;
+                ordered.push(shortcut);
+            });
+        });
+
+        state.settings.shortcuts = ordered;
+        document.getElementById('settingsShortcuts').innerHTML = renderSettingsShortcutRows(state.settings.shortcuts, state.settings.ribbons);
     }
 
     function renderResetConfirm() {
@@ -1237,6 +1419,8 @@
             clearSettingsToast();
 
             var fields = event.target.elements;
+            var ribbons = readRibbonSettingsFromForm();
+            state.settings.shortcuts = ensureShortcutRibbonAssignments(state.settings.shortcuts || [], ribbons);
             var nextSettings = {
                 dob: fields.dob.value,
                 lifeExpectancy: Number(fields.lifeExpectancy.value || GLOBAL_LIFE_EXPECTANCY),
@@ -1248,10 +1432,8 @@
                     countdownSuffix: fields.countdownSuffix.value.trim(),
                     styles: readTextStyleFields(fields)
                 }),
-                ribbon: normalizeRibbonSettings({
-                    name: fields.ribbonName.value.trim(),
-                    borderColor: fields.ribbonBorderColor.value
-                }),
+                ribbons: ribbons,
+                ribbon: ribbons[0],
                 layout: normalizeLayoutSettings(state.settings.layout),
                 customFont: state.settings.customFont,
                 shortcuts: (state.settings.shortcuts || [])
@@ -1264,7 +1446,8 @@
                             iconClass: shortcut.iconClass || '',
                             customIcon: shortcut.customIcon || '',
                             color: shortcut.color || '#353d3f',
-                            countClicks: shortcut.countClicks !== false
+                            countClicks: shortcut.countClicks !== false,
+                            ribbonId: shortcut.ribbonId || ribbons[0].id
                         };
                     })
                     .filter(function (shortcut) {
@@ -1294,6 +1477,11 @@
             var sliderInput = event.target.parentElement.querySelector('.text-size-slider');
             var numericValue = Number(event.target.value);
             if (sliderInput && isFinite(numericValue)) sliderInput.value = Math.min(Math.max(numericValue, 0.4), 8);
+        }
+
+        if (event.target.matches('[data-ribbon-field]')) {
+            updateRibbonFromInput(event.target);
+            return;
         }
 
         if (!event.target.matches('[data-field]')) return;
@@ -1367,10 +1555,10 @@
         if (!handle) return;
 
         var row = handle.closest('.shortcut-row');
-        var list = row && row.closest('.shortcut-drafts');
+        var list = row && (row.closest('.shortcut-list') || row.closest('.shortcut-drafts'));
         if (!row || !list) return;
 
-        var source = list.id === 'settingsShortcuts' ? 'settings' : 'setup';
+        var source = row.closest('#settingsShortcuts') ? 'settings' : 'setup';
         var rect = row.getBoundingClientRect();
         var placeholder = document.createElement('div');
         placeholder.className = 'shortcut-row-placeholder';
@@ -1413,6 +1601,15 @@
         var drag = state.drag;
         drag.row.style.left = (event.clientX - drag.offsetX) + 'px';
         drag.row.style.top = (event.clientY - drag.offsetY) + 'px';
+
+        if (drag.source === 'settings') {
+            var lists = Array.prototype.slice.call(document.querySelectorAll('#settingsShortcuts .shortcut-list'));
+            var targetList = lists.find(function (listItem) {
+                var rect = listItem.getBoundingClientRect();
+                return event.clientY >= rect.top - 12 && event.clientY <= rect.bottom + 12;
+            }) || drag.list;
+            drag.list = targetList;
+        }
 
         var rows = Array.prototype.slice.call(drag.list.querySelectorAll('.shortcut-row:not(.dragging-shortcut)'));
         var beforeRow = rows.find(function (row) {
@@ -1536,9 +1733,41 @@
             renderCustomizationCancelConfirm();
         }
 
+        if (action === 'addRibbon') {
+            state.settings.ribbons = readRibbonSettingsFromForm();
+            state.settings.ribbons.push(normalizeRibbonSettings({
+                id: createId(),
+                name: '',
+                borderColor: DEFAULT_RIBBON.borderColor
+            }));
+            state.settings.shortcuts = ensureShortcutRibbonAssignments(state.settings.shortcuts || [], state.settings.ribbons);
+            document.getElementById('settingsRibbons').innerHTML = renderRibbonSettingsRows(state.settings.ribbons);
+            document.getElementById('settingsShortcuts').innerHTML = renderSettingsShortcutRows(state.settings.shortcuts, state.settings.ribbons);
+        }
+
+        if (action === 'removeRibbon') {
+            var ribbonRow = actionElement.closest('.ribbon-settings-row');
+            var removedRibbonId = ribbonRow && ribbonRow.getAttribute('data-ribbon-id');
+            state.settings.ribbons = readRibbonSettingsFromForm();
+            if (!removedRibbonId || state.settings.ribbons.length <= 1) return;
+
+            var nextRibbonId = getNextRibbonIdAfterRemoval(removedRibbonId, state.settings.ribbons);
+            state.settings.ribbons = state.settings.ribbons.filter(function (ribbon) {
+                return ribbon.id !== removedRibbonId;
+            });
+            state.settings.shortcuts.forEach(function (shortcut) {
+                if (shortcut.ribbonId === removedRibbonId) shortcut.ribbonId = nextRibbonId;
+            });
+            document.getElementById('settingsRibbons').innerHTML = renderRibbonSettingsRows(state.settings.ribbons);
+            document.getElementById('settingsShortcuts').innerHTML = renderSettingsShortcutRows(state.settings.shortcuts, state.settings.ribbons);
+        }
+
         if (action === 'addSettingsShortcut') {
-            state.settings.shortcuts.push(createShortcut());
-            document.getElementById('settingsShortcuts').innerHTML = renderSettingsShortcutRows(state.settings.shortcuts);
+            state.settings.ribbons = readRibbonSettingsFromForm();
+            var shortcut = createShortcut();
+            shortcut.ribbonId = state.settings.ribbons[0].id;
+            state.settings.shortcuts.push(shortcut);
+            document.getElementById('settingsShortcuts').innerHTML = renderSettingsShortcutRows(state.settings.shortcuts, state.settings.ribbons);
         }
 
         if (action === 'removeSettingsShortcut') {
@@ -1546,7 +1775,7 @@
             state.settings.shortcuts = state.settings.shortcuts.filter(function (shortcut) {
                 return shortcut.id !== settingsRow.getAttribute('data-id');
             });
-            document.getElementById('settingsShortcuts').innerHTML = renderSettingsShortcutRows(state.settings.shortcuts);
+            document.getElementById('settingsShortcuts').innerHTML = renderSettingsShortcutRows(state.settings.shortcuts, state.settings.ribbons);
         }
 
         if (action === 'countClicksAll' || action === 'countClicksNone') {
@@ -1556,7 +1785,7 @@
                 shortcut.countClicks = action === 'countClicksAll';
             });
             if (source === 'settings') {
-                document.getElementById('settingsShortcuts').innerHTML = renderSettingsShortcutRows(state.settings.shortcuts);
+                document.getElementById('settingsShortcuts').innerHTML = renderSettingsShortcutRows(state.settings.shortcuts, state.settings.ribbons);
             } else {
                 renderShortcutDrafts();
             }
@@ -1664,7 +1893,7 @@
             if (resetShortcut) {
                 resetShortcut.clicks = 0;
                 saveSettings(state.settings);
-                document.getElementById('settingsShortcuts').innerHTML = renderSettingsShortcutRows(state.settings.shortcuts);
+                document.getElementById('settingsShortcuts').innerHTML = renderSettingsShortcutRows(state.settings.shortcuts, state.settings.ribbons);
             }
 
             state.counterResetTarget = null;
@@ -1677,7 +1906,7 @@
                     shortcut.clicks = 0;
                 });
                 saveSettings(state.settings);
-                document.getElementById('settingsShortcuts').innerHTML = renderSettingsShortcutRows(state.settings.shortcuts);
+                document.getElementById('settingsShortcuts').innerHTML = renderSettingsShortcutRows(state.settings.shortcuts, state.settings.ribbons);
             }
 
             state.counterResetTarget = null;
@@ -1710,7 +1939,7 @@
             shortcut.color = state.iconDraft.color || '#353d3f';
 
             if (state.iconPickerTarget.source === 'settings') {
-                document.getElementById('settingsShortcuts').innerHTML = renderSettingsShortcutRows(state.settings.shortcuts);
+                document.getElementById('settingsShortcuts').innerHTML = renderSettingsShortcutRows(state.settings.shortcuts, state.settings.ribbons);
             } else {
                 renderShortcutDrafts();
             }
