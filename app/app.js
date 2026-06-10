@@ -536,7 +536,9 @@
 
     function updateDashboardScale() {
         var scale = Math.min(window.innerWidth / DASHBOARD_STAGE.width, window.innerHeight / DASHBOARD_STAGE.height);
-        document.documentElement.style.setProperty('--dashboard-scale', String(Math.max(scale, 0.1)));
+        scale = Math.max(scale, 0.1);
+        document.documentElement.style.setProperty('--dashboard-scale', String(scale));
+        document.documentElement.style.setProperty('--dashboard-object-scale', String(1 / scale));
     }
 
     function renderDashboardObject(key, html, point) {
@@ -1000,7 +1002,9 @@
                 '<i class="' + escapeHtml(selectedIcon) + '" aria-hidden="true"></i>',
                 '</div>',
                 '<label class="field-label" for="shortcutIconColor">Icon color</label>',
-                '<input id="shortcutIconColor" class="color-circle" type="color" value="' + escapeHtml(selectedColor) + '">',
+                '<label class="color-wheel-control" title="Choose icon color" aria-label="Choose icon color">',
+                '<input id="shortcutIconColor" type="color" value="' + escapeHtml(selectedColor) + '">',
+                '</label>',
                 '<p class="field-info">The circle changes the icon color live.</p>'
             ].join('') : '<p class="field-info">Choose an icon to personalize its color.</p>',
             '</aside>',

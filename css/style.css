@@ -230,7 +230,7 @@ body.settings-open #app {
     left: 50%;
     position: absolute;
     top: 50%;
-    transform: translate(-50%, -50%);
+    transform: translate(-50%, -50%) scale(var(--dashboard-object-scale, 1));
     z-index: 1;
 }
 
@@ -718,15 +718,16 @@ input::file-selector-button {
     display: flex;
     flex-direction: column;
     gap: 10px;
-    margin-top: 22px;
-    padding-top: 24px;
+    margin-top: 32px;
+    padding-top: 28px;
     position: relative;
 }
 
 .settings-shortcuts {
     border-top: 1px solid rgba(53, 61, 63, 0.65);
-    margin-top: 22px;
-    padding-top: 24px;
+    margin-top: 32px;
+    padding-top: 28px;
+    position: relative;
 }
 
 .ribbon-settings-list {
@@ -793,13 +794,35 @@ input::file-selector-button {
 
 .settings-subhead h2,
 .settings-section h2 {
+    background: #000;
     color: #b0b5b9;
     font-size: 1.12rem;
     font-weight: 900;
+    left: 50%;
     line-height: 1;
     margin: 0;
+    padding: 0 18px;
     position: relative;
-    transform: translateX(-28px);
+    top: -37px;
+    transform: translateX(-50%);
+    width: max-content;
+    z-index: 1;
+}
+
+.settings-section > h2 {
+    align-self: center;
+    left: auto;
+    margin-bottom: -18px;
+    transform: none;
+}
+
+.settings-subhead {
+    min-height: 32px;
+    position: relative;
+}
+
+.settings-subhead h2 {
+    position: absolute;
 }
 
 .text-setting-row {
@@ -1257,6 +1280,41 @@ input::file-selector-button {
 .color-circle::-webkit-color-swatch {
     border: 2px solid #353d3f;
     border-radius: 50%;
+}
+
+.color-circle,
+.color-wheel-control {
+    cursor: pointer;
+}
+
+.color-wheel-control {
+    background:
+        radial-gradient(circle at center, rgba(255, 255, 255, 0.58) 0 18%, rgba(255, 255, 255, 0.16) 19% 34%, transparent 35%),
+        conic-gradient(#f53212, #ff7a00, #ffd000, #91d826, #00a44a, #18a9ff, #3735ff, #b63dff, #f25ce9, #f53212);
+    border: 2px solid #353d3f;
+    border-radius: 50%;
+    display: inline-flex;
+    height: 52px;
+    justify-content: center;
+    position: relative;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+    width: 52px;
+}
+
+.color-wheel-control:hover,
+.color-wheel-control:focus-within {
+    border-color: #b0b5b9;
+    box-shadow: 0 0 0 4px rgba(176, 181, 185, 0.08);
+    transform: scale(1.04);
+}
+
+.color-wheel-control input {
+    cursor: pointer;
+    height: 100%;
+    inset: 0;
+    opacity: 0;
+    position: absolute;
+    width: 100%;
 }
 
 .modal-footer {
