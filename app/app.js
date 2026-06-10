@@ -535,10 +535,10 @@
     }
 
     function updateDashboardScale() {
-        var scale = Math.min(window.innerWidth / DASHBOARD_STAGE.width, window.innerHeight / DASHBOARD_STAGE.height);
-        scale = Math.max(scale, 0.1);
-        document.documentElement.style.setProperty('--dashboard-scale', String(scale));
-        document.documentElement.style.setProperty('--dashboard-object-scale', String(1 / scale));
+        var fitScale = Math.min(1, window.innerWidth / 1920, window.innerHeight / 1080);
+        document.documentElement.style.setProperty('--dashboard-width', DASHBOARD_STAGE.width + 'px');
+        document.documentElement.style.setProperty('--dashboard-height', DASHBOARD_STAGE.height + 'px');
+        document.documentElement.style.setProperty('--dashboard-stage-scale', String(Math.max(fitScale, 0.1)));
     }
 
     function renderDashboardObject(key, html, point) {

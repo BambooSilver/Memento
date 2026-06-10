@@ -217,20 +217,20 @@ body.settings-open #app {
 }
 
 .dashboard-stage {
-    height: 1440px;
+    height: var(--dashboard-height, 1440px);
     left: 50%;
     position: fixed;
     top: 50%;
-    transform: translate(-50%, -50%) scale(var(--dashboard-scale, 1));
+    transform: translate(-50%, -50%) scale(var(--dashboard-stage-scale, 1));
     transform-origin: center;
-    width: 2560px;
+    width: var(--dashboard-width, 2560px);
 }
 
 .dashboard-object {
     left: 50%;
     position: absolute;
     top: 50%;
-    transform: translate(-50%, -50%) scale(var(--dashboard-object-scale, 1));
+    transform: translate(-50%, -50%);
     z-index: 1;
 }
 
