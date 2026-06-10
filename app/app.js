@@ -38,8 +38,10 @@
     var DEFAULT_RIBBON = {
         id: 'default',
         name: '',
-        borderColor: '#d8d2c2'
+        borderColor: '#d8d2c2',
+        rainbowBorder: false
     };
+    var RAINBOW_UNLOCK_PARTS = [54, 54, 53, 57, 54, 62, 60, 62];
     var DASHBOARD_STAGE = {
         width: 2560,
         height: 1440
@@ -91,6 +93,7 @@
                     ribbon: normalizeRibbonSettings(saved.ribbon),
                     layout: normalizeLayoutSettings(saved.layout),
                     customFont: normalizeCustomFont(saved.customFont),
+                    rainbowUnlocked: saved.rainbowUnlocked === true,
                     shortcuts: normalizeShortcutsSettings(saved.shortcuts, saved.ribbons, saved.ribbon)
                 };
             }
@@ -111,6 +114,7 @@
             customIcon: shortcut.customIcon || '',
             color: shortcut.color || '#353d3f',
             countClicks: shortcut.countClicks !== false,
+            rainbowIcon: shortcut.rainbowIcon === true && !shortcut.customIcon,
             ribbonId: shortcut.ribbonId || fallbackRibbonId || DEFAULT_RIBBON.id
         };
     }
@@ -146,7 +150,8 @@
         return {
             id: ribbon.id || createId(),
             name: ribbon.name || DEFAULT_RIBBON.name,
-            borderColor: normalizeHexColor(ribbon.borderColor, DEFAULT_RIBBON.borderColor)
+            borderColor: normalizeHexColor(ribbon.borderColor, DEFAULT_RIBBON.borderColor),
+            rainbowBorder: ribbon.rainbowBorder === true
         };
     }
 
@@ -183,6 +188,12 @@
             x: clampNumber(point.x, 2, 98, fallback.x),
             y: clampNumber(point.y, 2, 98, fallback.y)
         };
+    }
+
+    function isRainbowUnlockCode(value) {
+        return String(value || '') === RAINBOW_UNLOCK_PARTS.map(function (part) {
+            return String.fromCharCode(part - 5);
+        }).join('');
     }
 
     function normalizeTextStyles(styles) {
@@ -486,6 +497,7 @@
                         customIcon: shortcut.customIcon || '',
                         color: shortcut.color || '#353d3f',
                         countClicks: shortcut.countClicks !== false,
+                        rainbowIcon: shortcut.rainbowIcon === true && !shortcut.customIcon,
                         ribbonId: DEFAULT_RIBBON.id
                     };
             })
@@ -503,6 +515,7 @@
             ribbon: normalizeRibbonSettings(DEFAULT_RIBBON),
             layout: normalizeLayoutSettings(null),
             customFont: null,
+            rainbowUnlocked: false,
             shortcuts: shortcuts
         };
     }
@@ -606,18 +619,20 @@
     }
 
     function renderShortcutRibbon(ribbon, shortcuts) {
+        var ribbonClass = 'shortcut-ribbon' + (ribbon.name ? ' has-title' : '') + (ribbon.rainbowBorder ? ' rainbow-ribbon' : '');
         return [
-            '<nav class="shortcut-ribbon' + (ribbon.name ? ' has-title' : '') + '" aria-label="' + escapeHtml(ribbon.name || 'Shortcuts') + '" style="border-color:' + escapeHtml(ribbon.borderColor) + '">',
+            '<nav class="' + ribbonClass + '" aria-label="' + escapeHtml(ribbon.name || 'Shortcuts') + '" style="border-color:' + escapeHtml(ribbon.borderColor) + '">',
             ribbon.name ? '<div class="ribbon-title" style="--ribbon-title-bg:#050505">' + escapeHtml(ribbon.name) + '</div>' : '',
             shortcuts.length ? [
             shortcuts.map(function (shortcut) {
                 var initial = escapeHtml(shortcut.name.charAt(0).toUpperCase());
                 var color = escapeHtml(shortcut.color || '#353d3f');
+                var rainbowClass = shortcut.rainbowIcon && !shortcut.customIcon ? ' rainbow-icon' : '';
                 var icon = shortcut.customIcon
                     ? '<img class="shortcut-custom-icon" src="' + escapeHtml(shortcut.customIcon) + '" alt="">'
                     : shortcut.iconClass
-                    ? '<i class="' + escapeHtml(shortcut.iconClass) + ' shortcut-fa" aria-hidden="true"></i>'
-                    : '<span class="shortcut-initial">' + initial + '</span>';
+                    ? '<i class="' + escapeHtml(shortcut.iconClass) + ' shortcut-fa' + rainbowClass + '" aria-hidden="true"></i>'
+                    : '<span class="shortcut-initial' + rainbowClass + '">' + initial + '</span>';
                 return [
                     '<div class="shortcut-tile" data-id="' + escapeHtml(shortcut.id) + '">',
                     '<a href="' + escapeHtml(shortcut.url) + '" target="_self" title="' + escapeHtml(shortcut.name) + '" data-shortcut-link="true" style="color:' + color + '">',
@@ -721,11 +736,8 @@
             '<div class="settings-section">',
             '<div class="settings-subhead">',
             '<h2>Ribbon</h2>',
-            '<div class="inline-actions">',
-            '<button class="ghost-button" type="button" data-action="addRibbon">Add ribbon</button>',
-            '<button class="ghost-button" type="button" data-action="startCustomization">Change positions</button>',
             '</div>',
-            '</div>',
+            renderRibbonSettingsControls(settings.rainbowUnlocked === true),
             '<div id="settingsRibbons" class="ribbon-settings-list">' + renderRibbonSettingsRows(ribbons) + '</div>',
             '</div>',
             '<div class="settings-shortcuts">',
@@ -789,7 +801,22 @@
         ].join('');
     }
 
+    function renderRibbonSettingsControls(rainbowUnlocked) {
+        return [
+            '<div class="ribbon-control-box">',
+            '<span>Ribbon settings</span>',
+            '<button class="ghost-button tiny-button" type="button" data-action="addRibbon">Add ribbon</button>',
+            '<button class="ghost-button tiny-button" type="button" data-action="startCustomization">Change positions</button>',
+            '<button class="ghost-button tiny-button reset-all-counters-button" type="button" data-action="openPositionsReset">Reset positions</button>',
+            rainbowUnlocked
+                ? '<span class="rainbow-unlocked-note">Rainbow unlocked</span>'
+                : '<input class="secret-unlock-input" type="password" inputmode="numeric" maxlength="8" data-action="rainbowUnlockInput" aria-label="Unlock rainbow settings" placeholder="Code">',
+            '</div>'
+        ].join('');
+    }
+
     function renderRibbonSettingsRows(ribbons) {
+        var rainbowUnlocked = state.settings && state.settings.rainbowUnlocked === true;
         return ribbons.map(function (ribbon, index) {
             return [
                 '<div class="ribbon-settings-row" data-ribbon-id="' + escapeHtml(ribbon.id) + '">',
@@ -797,6 +824,7 @@
                 '<input type="text" data-ribbon-field="name" maxlength="80" value="' + escapeHtml(ribbon.name) + '" placeholder="Ribbon name">',
                 '<label class="mini-field-label ribbon-color-label">Border</label>',
                 '<input data-ribbon-field="borderColor" class="color-circle settings-color-circle" type="color" value="' + escapeHtml(ribbon.borderColor) + '">',
+                rainbowUnlocked ? renderRainbowToggle('ribbon', ribbon.rainbowBorder === true) : '',
                 '<button class="icon-button" type="button" data-action="removeRibbon" title="Remove ribbon" aria-label="Remove ribbon"' + (ribbons.length <= 1 ? ' disabled' : '') + '>',
                 '<i class="fa-solid fa-xmark"></i>',
                 '</button>',
@@ -809,6 +837,7 @@
         if (!shortcuts.length) return '<p class="empty-note">No shortcuts added.</p>';
 
         ribbons = ribbons || getSettingsRibbons();
+        var rainbowUnlocked = state.settings && state.settings.rainbowUnlocked === true;
         return renderCounterBulkControls('settings') + ribbons.map(function (ribbon) {
             var ribbonShortcuts = shortcuts.filter(function (shortcut) {
                 return shortcut.ribbonId === ribbon.id;
@@ -825,6 +854,7 @@
                 '<input type="url" data-field="url" placeholder="https://example.com" value="' + escapeHtml(shortcut.url) + '">',
                 renderShortcutIconButton(shortcut),
                 renderShortcutCounterToggle(shortcut),
+                rainbowUnlocked && !shortcut.customIcon ? renderRainbowToggle('shortcut', shortcut.rainbowIcon === true) : '',
                 '<button class="icon-button reset-counter-button" type="button" data-action="openCounterReset" title="Reset click counter" aria-label="Reset click counter">',
                 '<i class="fa-solid fa-rotate-left"></i>',
                 '</button>',
@@ -868,11 +898,21 @@
         ].join('');
     }
 
+    function renderRainbowToggle(scope, checked) {
+        return [
+            '<label class="rainbow-toggle" title="Rainbow color">',
+            '<input type="checkbox" data-' + scope + '-field="' + (scope === 'ribbon' ? 'rainbowBorder' : 'rainbowIcon') + '"' + (checked ? ' checked' : '') + '>',
+            '<span class="rainbow-toggle-dot" aria-hidden="true"></span>',
+            '<span>Rainbow</span>',
+            '</label>'
+        ].join('');
+    }
+
     function renderShortcutIconButton(shortcut) {
         var icon = shortcut.customIcon
             ? '<img class="shortcut-custom-icon small" src="' + escapeHtml(shortcut.customIcon) + '" alt="">'
             : shortcut.iconClass
-            ? '<i class="' + escapeHtml(shortcut.iconClass) + '" style="color:' + escapeHtml(shortcut.color || '#353d3f') + '" aria-hidden="true"></i>'
+            ? '<i class="' + escapeHtml(shortcut.iconClass) + (shortcut.rainbowIcon ? ' rainbow-icon' : '') + '" style="color:' + escapeHtml(shortcut.color || '#353d3f') + '" aria-hidden="true"></i>'
             : '<i class="fa-solid fa-plus" aria-hidden="true"></i>';
         var label = shortcut.iconClass || shortcut.customIcon ? 'Change icon' : 'Add icon';
 
@@ -957,7 +997,8 @@
         state.iconDraft = {
             iconClass: shortcut.iconClass || '',
             customIcon: shortcut.customIcon || '',
-            color: shortcut.color || '#353d3f'
+            color: shortcut.color || '#353d3f',
+            rainbowIcon: shortcut.rainbowIcon === true
         };
 
         loadIconCatalog(renderIconPicker);
@@ -999,12 +1040,13 @@
                 '<p class="field-info">Uploaded icons are shown as-is, so color controls are disabled.</p>'
             ].join('') : selectedIcon ? [
                 '<div class="live-icon-preview" style="color:' + escapeHtml(selectedColor) + '">',
-                '<i class="' + escapeHtml(selectedIcon) + '" aria-hidden="true"></i>',
+                '<i class="' + escapeHtml(selectedIcon) + (state.iconDraft.rainbowIcon ? ' rainbow-icon' : '') + '" aria-hidden="true"></i>',
                 '</div>',
                 '<label class="field-label" for="shortcutIconColor">Icon color</label>',
                 '<label class="color-wheel-control" title="Choose icon color" aria-label="Choose icon color">',
                 '<input id="shortcutIconColor" type="color" value="' + escapeHtml(selectedColor) + '">',
                 '</label>',
+                state.settings && state.settings.rainbowUnlocked ? renderRainbowToggle('shortcut', state.iconDraft.rainbowIcon === true) : '',
                 '<p class="field-info">The circle changes the icon color live.</p>'
             ].join('') : '<p class="field-info">Choose an icon to personalize its color.</p>',
             '</aside>',
@@ -1067,12 +1109,15 @@
         });
 
         if (!shortcut) return;
+        var fieldName = input.getAttribute('data-field') || input.getAttribute('data-shortcut-field');
+        if (!fieldName) return;
+
         if (input.type === 'checkbox') {
-            shortcut[input.getAttribute('data-field')] = input.checked;
+            shortcut[fieldName] = input.checked;
             return;
         }
 
-        shortcut[input.getAttribute('data-field')] = input.value;
+        shortcut[fieldName] = input.value;
     }
 
     function readRibbonSettingsFromForm() {
@@ -1081,7 +1126,8 @@
             return normalizeRibbonSettings({
                 id: row.getAttribute('data-ribbon-id'),
                 name: (row.querySelector('[data-ribbon-field="name"]') || {}).value || '',
-                borderColor: (row.querySelector('[data-ribbon-field="borderColor"]') || {}).value || DEFAULT_RIBBON.borderColor
+                borderColor: (row.querySelector('[data-ribbon-field="borderColor"]') || {}).value || DEFAULT_RIBBON.borderColor,
+                rainbowBorder: !!(row.querySelector('[data-ribbon-field="rainbowBorder"]') || {}).checked
             });
         });
 
@@ -1108,7 +1154,28 @@
             return;
         }
 
+        if (input.getAttribute('data-ribbon-field') === 'rainbowBorder') {
+            ribbon.rainbowBorder = input.checked;
+            return;
+        }
+
         ribbon.borderColor = normalizeHexColor(input.value, DEFAULT_RIBBON.borderColor);
+    }
+
+    function unlockRainbowSettings() {
+        if (!state.settings || state.settings.rainbowUnlocked) return;
+        state.settings.rainbowUnlocked = true;
+        state.settings.ribbons = readRibbonSettingsFromForm();
+        state.settings.shortcuts = ensureShortcutRibbonAssignments(state.settings.shortcuts || [], state.settings.ribbons);
+        saveSettings(state.settings);
+
+        var ribbonSection = document.querySelector('#settingsRibbons');
+        var shortcutsSection = document.querySelector('#settingsShortcuts');
+        var controlBox = document.querySelector('.ribbon-control-box');
+        if (controlBox) controlBox.outerHTML = renderRibbonSettingsControls(true);
+        if (ribbonSection) ribbonSection.innerHTML = renderRibbonSettingsRows(state.settings.ribbons);
+        if (shortcutsSection) shortcutsSection.innerHTML = renderSettingsShortcutRows(state.settings.shortcuts, state.settings.ribbons);
+        showSettingsToast('Rainbow settings unlocked.');
     }
 
     function validateSettingsShortcuts() {
@@ -1336,6 +1403,27 @@
         ].join(''));
     }
 
+    function renderPositionsResetConfirm() {
+        setModal([
+            '<div class="modal-backdrop">',
+            '<section class="glass-modal compact-modal" role="dialog" aria-modal="true" aria-labelledby="positionsResetTitle">',
+            '<div class="modal-header">',
+            '<div>',
+            '<p class="setup-kicker danger-kicker">Warning</p>',
+            '<h1 id="positionsResetTitle" class="setup-title">Reset all positions?</h1>',
+            '</div>',
+            '<button class="icon-button modal-close" type="button" data-action="closePositionsReset" aria-label="Close reset positions dialog"><i class="fa-solid fa-xmark"></i></button>',
+            '</div>',
+            '<p class="field-info">This will reset every ribbon and text position back to the default layout. This cannot be reverted.</p>',
+            '<div class="form-actions">',
+            '<button class="danger-button active text-danger-button" type="button" data-action="confirmPositionsReset">Reset positions</button>',
+            '<button class="ghost-button" type="button" data-action="closePositionsReset">Cancel</button>',
+            '</div>',
+            '</section>',
+            '</div>'
+        ].join(''));
+    }
+
     function renderCustomizationCancelConfirm() {
         setModal([
             '<div class="modal-backdrop">',
@@ -1452,6 +1540,7 @@
                 ribbon: ribbons[0],
                 layout: normalizeLayoutSettings(state.settings.layout),
                 customFont: state.settings.customFont,
+                rainbowUnlocked: state.settings.rainbowUnlocked === true,
                 shortcuts: (state.settings.shortcuts || [])
                     .map(function (shortcut) {
                         return {
@@ -1463,6 +1552,7 @@
                             customIcon: shortcut.customIcon || '',
                             color: shortcut.color || '#353d3f',
                             countClicks: shortcut.countClicks !== false,
+                            rainbowIcon: shortcut.rainbowIcon === true && !shortcut.customIcon,
                             ribbonId: shortcut.ribbonId || ribbons[0].id
                         };
                     })
@@ -1495,8 +1585,18 @@
             if (sliderInput && isFinite(numericValue)) sliderInput.value = Math.min(Math.max(numericValue, 0.4), 8);
         }
 
+        if (event.target.matches('.secret-unlock-input')) {
+            if (isRainbowUnlockCode(event.target.value)) unlockRainbowSettings();
+            return;
+        }
+
         if (event.target.matches('[data-ribbon-field]')) {
             updateRibbonFromInput(event.target);
+            return;
+        }
+
+        if (event.target.matches('[data-shortcut-field]')) {
+            updateShortcutFromInput(event.target, state.settings.shortcuts);
             return;
         }
 
@@ -1680,11 +1780,18 @@
             if (livePreview) livePreview.style.color = event.target.value;
         }
 
+        if (event.target.matches('[data-shortcut-field="rainbowIcon"]') && state.iconDraft) {
+            state.iconDraft.rainbowIcon = event.target.checked;
+            var previewIcon = document.querySelector('.live-icon-preview i');
+            if (previewIcon) previewIcon.classList.toggle('rainbow-icon', event.target.checked);
+        }
+
         if (event.target.id === 'customShortcutIcon') {
             readIconFile(event.target.files[0], function (icon) {
                 if (!icon || !state.iconDraft) return;
                 state.iconDraft.customIcon = icon;
                 state.iconDraft.iconClass = '';
+                state.iconDraft.rainbowIcon = false;
                 renderIconPicker();
             });
         }
@@ -1838,6 +1945,10 @@
             renderAllCountersResetConfirm();
         }
 
+        if (action === 'openPositionsReset') {
+            renderPositionsResetConfirm();
+        }
+
         if (action === 'resetTextStyle') {
             resetTextStyleControl(actionElement);
         }
@@ -1903,6 +2014,10 @@
             clearModal();
         }
 
+        if (action === 'closePositionsReset') {
+            clearModal();
+        }
+
         if (action === 'confirmResetSettings') {
             localStorage.removeItem(STORAGE_KEY);
             state.settings = null;
@@ -1947,6 +2062,15 @@
             discardCustomizationMode();
         }
 
+        if (action === 'confirmPositionsReset') {
+            if (state.settings) {
+                state.settings.layout = normalizeLayoutSettings(null);
+                saveSettings(state.settings);
+            }
+            clearModal();
+            showSettingsToast('Positions reset.');
+        }
+
         if (action === 'selectIcon') {
             state.iconDraft.iconClass = actionElement.getAttribute('data-icon-class');
             state.iconDraft.customIcon = '';
@@ -1957,6 +2081,7 @@
             state.iconDraft.iconClass = '';
             state.iconDraft.customIcon = '';
             state.iconDraft.color = '#353d3f';
+            state.iconDraft.rainbowIcon = false;
             renderIconPicker();
         }
 
@@ -1967,6 +2092,7 @@
             shortcut.iconClass = state.iconDraft.iconClass;
             shortcut.customIcon = state.iconDraft.customIcon;
             shortcut.color = state.iconDraft.color || '#353d3f';
+            shortcut.rainbowIcon = !shortcut.customIcon && state.iconDraft.rainbowIcon === true;
 
             if (state.iconPickerTarget.source === 'settings') {
                 document.getElementById('settingsShortcuts').innerHTML = renderSettingsShortcutRows(state.settings.shortcuts, state.settings.ribbons);

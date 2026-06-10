@@ -118,6 +118,24 @@ body.settings-open #app {
     padding-top: 18px;
 }
 
+.shortcut-ribbon.rainbow-ribbon {
+    border-color: transparent !important;
+}
+
+.shortcut-ribbon.rainbow-ribbon:before {
+    animation: rainbowSpin 5s linear infinite;
+    background: conic-gradient(#ff2d2d, #ff9f0a, #ffe600, #31d158, #00c7ff, #3455ff, #bf5af2, #ff2d2d);
+    border-radius: inherit;
+    content: "";
+    inset: -2px;
+    padding: 2px;
+    pointer-events: none;
+    position: absolute;
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+}
+
 .ribbon-title {
     background: var(--ribbon-title-bg, #050505);
     color: #575f62;
@@ -170,6 +188,16 @@ body.settings-open #app {
     font-weight: 800;
     line-height: 1;
     text-transform: uppercase;
+}
+
+.rainbow-icon {
+    animation: rainbowText 3.8s linear infinite;
+    background: linear-gradient(90deg, #ff2d2d, #ff9f0a, #ffe600, #31d158, #00c7ff, #3455ff, #bf5af2, #ff2d2d);
+    background-size: 260% 100%;
+    color: transparent !important;
+    display: inline-block;
+    -webkit-background-clip: text;
+    background-clip: text;
 }
 
 .shortcut-fa {
@@ -580,7 +608,7 @@ input::file-selector-button {
     align-items: center;
     display: grid;
     gap: 10px;
-    grid-template-columns: 34px minmax(110px, 0.7fr) minmax(180px, 1.3fr) auto auto 38px 38px;
+    grid-template-columns: 34px minmax(110px, 0.7fr) minmax(180px, 1.3fr) auto auto auto 38px 38px;
     transition: transform 0.18s ease, opacity 0.18s ease;
 }
 
@@ -595,6 +623,7 @@ input::file-selector-button {
 .shortcut-row-invalid input,
 .shortcut-row-invalid .shortcut-icon-picker-button,
 .shortcut-row-invalid .counter-toggle,
+.shortcut-row-invalid .rainbow-toggle,
 .shortcut-row-invalid .drag-handle,
 .shortcut-row-invalid .icon-button {
     border-color: #880808;
@@ -740,7 +769,7 @@ input::file-selector-button {
     align-items: center;
     display: grid;
     gap: 10px;
-    grid-template-columns: 34px minmax(180px, 1fr) auto 38px 38px;
+    grid-template-columns: 34px minmax(180px, 1fr) auto 38px auto 38px;
 }
 
 .ribbon-settings-index {
@@ -758,6 +787,41 @@ input::file-selector-button {
 
 .ribbon-color-label {
     justify-self: end;
+}
+
+.ribbon-control-box {
+    align-items: center;
+    border: 1px solid rgba(53, 61, 63, 0.65);
+    border-radius: 8px;
+    color: #575f62;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: flex-end;
+    padding: 8px;
+}
+
+.ribbon-control-box > span:first-child {
+    font-size: 0.78rem;
+    font-weight: 700;
+    margin-right: auto;
+}
+
+.secret-unlock-input {
+    min-height: 30px;
+    padding: 0.25rem 0.55rem;
+    width: 78px;
+}
+
+.rainbow-unlocked-note {
+    animation: rainbowText 4s linear infinite;
+    background: linear-gradient(90deg, #ff2d2d, #ff9f0a, #ffe600, #31d158, #00c7ff, #3455ff, #bf5af2, #ff2d2d);
+    background-size: 260% 100%;
+    color: transparent;
+    font-size: 0.78rem;
+    font-weight: 700;
+    -webkit-background-clip: text;
+    background-clip: text;
 }
 
 .shortcut-groups {
@@ -1059,6 +1123,53 @@ input::file-selector-button {
 .counter-toggle:has(input:checked) {
     border-color: #575f62;
     color: #b0b5b9;
+}
+
+.rainbow-toggle {
+    align-items: center;
+    background: #050505;
+    border: 1px solid #353d3f;
+    border-radius: 8px;
+    color: #b0b5b9;
+    cursor: pointer;
+    display: inline-flex;
+    gap: 7px;
+    justify-content: center;
+    min-height: 38px;
+    padding: 0.35rem 0.65rem;
+    white-space: nowrap;
+}
+
+.rainbow-toggle input {
+    display: none;
+}
+
+.rainbow-toggle-dot {
+    background: conic-gradient(#ff2d2d, #ff9f0a, #ffe600, #31d158, #00c7ff, #3455ff, #bf5af2, #ff2d2d);
+    border: 1px solid #353d3f;
+    border-radius: 50%;
+    height: 18px;
+    opacity: 0.42;
+    width: 18px;
+}
+
+.rainbow-toggle input:checked + .rainbow-toggle-dot {
+    animation: rainbowSpin 3s linear infinite;
+    border-color: #b0b5b9;
+    box-shadow: 0 0 12px rgba(255, 255, 255, 0.2);
+    opacity: 1;
+}
+
+@keyframes rainbowSpin {
+    to {
+        filter: hue-rotate(360deg);
+    }
+}
+
+@keyframes rainbowText {
+    to {
+        background-position: 260% 0;
+    }
 }
 
 .reset-counter-button {
@@ -1384,7 +1495,7 @@ input::file-selector-button {
     }
 
     .ribbon-settings-row {
-        grid-template-columns: 34px 1fr 38px 38px;
+        grid-template-columns: 34px 1fr 38px;
     }
 
     .ribbon-color-label {
@@ -1421,6 +1532,11 @@ input::file-selector-button {
     .counter-toggle {
         grid-column: 1 / -1;
         order: 5;
+    }
+
+    .rainbow-toggle {
+        grid-column: 1 / -1;
+        order: 6;
     }
 
     .text-style-controls {
