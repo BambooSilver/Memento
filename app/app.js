@@ -35,6 +35,18 @@
             borderColor: '#000000'
         }
     };
+    var DEFAULT_RIBBON = {
+        name: '',
+        borderColor: '#d8d2c2'
+    };
+    var DEFAULT_LAYOUT = {
+        ribbon: { x: 50, y: 21 },
+        ageLabel: { x: 50, y: 40 },
+        ageCounter: { x: 50, y: 49 },
+        countdownPrefix: { x: 50, y: 62 },
+        countdownValue: { x: 50, y: 67 },
+        countdownSuffix: { x: 50, y: 72 }
+    };
 
     var state = {
         settings: loadSettings(),
@@ -48,7 +60,8 @@
         iconSearch: '',
         iconDraft: null,
         resetArmed: false,
-        drag: null
+        drag: null,
+        customization: null
     };
 
     var app = document.getElementById('app');
@@ -69,6 +82,8 @@
                     title: saved.title || 'Memento',
                     icon: saved.icon || '',
                     text: normalizeTextSettings(saved.text),
+                    ribbon: normalizeRibbonSettings(saved.ribbon),
+                    layout: normalizeLayoutSettings(saved.layout),
                     customFont: normalizeCustomFont(saved.customFont),
                     shortcuts: Array.isArray(saved.shortcuts) ? saved.shortcuts.map(normalizeShortcut) : []
                 };
@@ -100,6 +115,31 @@
             countdownPrefix: text.countdownPrefix || DEFAULT_TEXT.countdownPrefix,
             countdownSuffix: text.countdownSuffix || DEFAULT_TEXT.countdownSuffix,
             styles: normalizeTextStyles(text.styles)
+        };
+    }
+
+    function normalizeRibbonSettings(ribbon) {
+        ribbon = ribbon || {};
+        return {
+            name: ribbon.name || DEFAULT_RIBBON.name,
+            borderColor: normalizeHexColor(ribbon.borderColor, DEFAULT_RIBBON.borderColor)
+        };
+    }
+
+    function normalizeLayoutSettings(layout) {
+        layout = layout || {};
+        var normalized = {};
+        Object.keys(DEFAULT_LAYOUT).forEach(function (key) {
+            normalized[key] = normalizeLayoutPoint(layout[key], DEFAULT_LAYOUT[key]);
+        });
+        return normalized;
+    }
+
+    function normalizeLayoutPoint(point, fallback) {
+        point = point || {};
+        return {
+            x: clampNumber(point.x, 2, 98, fallback.x),
+            y: clampNumber(point.y, 2, 98, fallback.y)
         };
     }
 
@@ -248,6 +288,7 @@
     function startLoop() {
         stopLoop();
         document.body.classList.remove('settings-open');
+        document.body.classList.remove('customization-open');
         settingsButton.hidden = false;
         renderDashboard();
         state.interval = setInterval(updateDashboardTime, 100);
@@ -415,6 +456,8 @@
             title: state.setupDraft.title || 'Memento',
             icon: state.setupDraft.icon || '',
             text: normalizeTextSettings(state.setupDraft.text),
+            ribbon: normalizeRibbonSettings(null),
+            layout: normalizeLayoutSettings(null),
             customFont: null,
             shortcuts: shortcuts
         };
@@ -423,24 +466,49 @@
     function renderDashboard() {
         if (!state.settings) return;
 
-        var shortcutsHtml = renderShortcuts(state.settings.shortcuts || []);
+        var layout = state.customization ? state.customization.draftLayout : normalizeLayoutSettings(state.settings.layout);
+        var shortcutsHtml = renderDashboardObject('ribbon', renderShortcuts(state.settings.shortcuts || []), layout.ribbon);
         var text = normalizeTextSettings(state.settings.text);
         var styles = text.styles;
 
         setApp([
             shortcutsHtml,
-            '<section class="countdown-shell">',
-            '<h1 class="age-label styled-dashboard-text" style="' + renderTextStyle(styles.ageLabel, DEFAULT_TEXT_STYLES.ageLabel) + '">' + escapeHtml(text.ageLabel) + '</h1>',
-            '<h2 class="count styled-dashboard-text" style="' + renderTextStyle(styles.ageCounter, DEFAULT_TEXT_STYLES.ageCounter) + '"><span id="yearValue"></span><sup>.<span id="millisecondsValue"></span></sup></h2>',
-            '<div class="countdownDiv">',
-            '<div class="countdownText styled-dashboard-text" style="' + renderTextStyle(styles.countdownPrefix, DEFAULT_TEXT_STYLES.countdownPrefix) + '">' + escapeHtml(text.countdownPrefix) + '</div>',
-            '<h2 id="remainingValue" class="countdown styled-dashboard-text" style="' + renderTextStyle(styles.countdownValue, DEFAULT_TEXT_STYLES.countdownValue) + '"></h2>',
-            '<div class="orLess styled-dashboard-text" style="' + renderTextStyle(styles.countdownSuffix, DEFAULT_TEXT_STYLES.countdownSuffix) + '">' + escapeHtml(text.countdownSuffix) + '</div>',
-            '</div>',
-            '</section>'
+            '<section class="countdown-shell" aria-label="Life countdown">',
+            renderDashboardObject('ageLabel', '<h1 class="age-label styled-dashboard-text" style="' + renderTextStyle(styles.ageLabel, DEFAULT_TEXT_STYLES.ageLabel) + '">' + escapeHtml(text.ageLabel) + '</h1>', layout.ageLabel),
+            renderDashboardObject('ageCounter', '<h2 class="count styled-dashboard-text" style="' + renderTextStyle(styles.ageCounter, DEFAULT_TEXT_STYLES.ageCounter) + '"><span id="yearValue"></span><sup>.<span id="millisecondsValue"></span></sup></h2>', layout.ageCounter),
+            renderDashboardObject('countdownPrefix', '<div class="countdownText styled-dashboard-text" style="' + renderTextStyle(styles.countdownPrefix, DEFAULT_TEXT_STYLES.countdownPrefix) + '">' + escapeHtml(text.countdownPrefix) + '</div>', layout.countdownPrefix),
+            renderDashboardObject('countdownValue', '<h2 id="remainingValue" class="countdown styled-dashboard-text" style="' + renderTextStyle(styles.countdownValue, DEFAULT_TEXT_STYLES.countdownValue) + '"></h2>', layout.countdownValue),
+            renderDashboardObject('countdownSuffix', '<div class="orLess styled-dashboard-text" style="' + renderTextStyle(styles.countdownSuffix, DEFAULT_TEXT_STYLES.countdownSuffix) + '">' + escapeHtml(text.countdownSuffix) + '</div>', layout.countdownSuffix),
+            '</section>',
+            state.customization ? renderCustomizationToast() : ''
         ].join(''));
 
         updateDashboardTime();
+    }
+
+    function renderDashboardObject(key, html, point) {
+        var className = 'dashboard-object' + (state.customization ? ' customization-object' : '');
+        return [
+            '<div class="' + className + '" data-layout-key="' + escapeHtml(key) + '" style="' + renderLayoutPoint(point) + '">',
+            state.customization ? '<span class="customization-handle" aria-hidden="true"><i class="fa-solid fa-grip-vertical"></i></span>' : '',
+            html,
+            '</div>'
+        ].join('');
+    }
+
+    function renderLayoutPoint(point) {
+        point = normalizeLayoutPoint(point, { x: 50, y: 50 });
+        return 'left:' + point.x + 'vw;top:' + point.y + 'vh;';
+    }
+
+    function renderCustomizationToast() {
+        return [
+            '<div class="customization-toast" role="status">',
+            '<span>Layout customization</span>',
+            '<button class="primary-button tiny-button" type="button" data-action="saveCustomization">Save</button>',
+            '<button class="ghost-button tiny-button" type="button" data-action="cancelCustomization">Cancel</button>',
+            '</div>'
+        ].join('');
     }
     function updateDashboardTime() {
         if (!state.settings) return;
@@ -466,10 +534,13 @@
     }
 
     function renderShortcuts(shortcuts) {
-        if (!shortcuts.length) return '<div class="shortcut-space" aria-hidden="true"></div>';
+        var ribbon = normalizeRibbonSettings(state.settings && state.settings.ribbon);
+        if (!shortcuts.length && !ribbon.name && !state.customization) return '<div class="shortcut-space" aria-hidden="true"></div>';
 
         return [
-            '<nav class="shortcut-ribbon" aria-label="Shortcuts">',
+            '<nav class="shortcut-ribbon" aria-label="Shortcuts" style="border-color:' + escapeHtml(ribbon.borderColor) + '">',
+            ribbon.name ? '<div class="ribbon-title">' + escapeHtml(ribbon.name) + '</div>' : '',
+            shortcuts.length ? [
             shortcuts.map(function (shortcut) {
                 var initial = escapeHtml(shortcut.name.charAt(0).toUpperCase());
                 var color = escapeHtml(shortcut.color || '#353d3f');
@@ -486,7 +557,8 @@
                     shortcut.countClicks !== false ? '<span class="click-counter">' + Number(shortcut.clicks || 0) + '</span>' : '',
                     '</div>'
                 ].join('');
-            }).join(''),
+            }).join('')
+            ].join('') : '<p class="empty-note ribbon-empty-note">Ribbon</p>',
             '</nav>'
         ].join('');
     }
@@ -500,6 +572,7 @@
         var shortcuts = settings.shortcuts || [];
         var text = normalizeTextSettings(settings.text);
         var styles = text.styles;
+        var ribbon = normalizeRibbonSettings(settings.ribbon);
 
         setApp([
             '<section class="settings-panel">',
@@ -534,6 +607,16 @@
             '<h2>Main screen font</h2>',
             '<input id="settingsFont" name="dashboardFont" type="file" accept=".woff,.woff2,.ttf,.otf,font/woff,font/woff2,font/ttf,font/otf">',
             '<p class="field-info">Settings stay in Lato for readability. Uploaded WOFF, WOFF2, TTF, or OTF fonts apply to the main countdown screen.</p>',
+            '</div>',
+            '<div class="settings-section">',
+            '<div class="settings-subhead">',
+            '<h2>Ribbon</h2>',
+            '<button class="ghost-button" type="button" data-action="startCustomization">Change positions</button>',
+            '</div>',
+            '<label class="field-label" for="settingsRibbonName">Ribbon name</label>',
+            '<input id="settingsRibbonName" name="ribbonName" type="text" maxlength="80" value="' + escapeHtml(ribbon.name) + '" placeholder="Shortcuts">',
+            '<label class="field-label" for="settingsRibbonBorderColor">Ribbon border color</label>',
+            '<input id="settingsRibbonBorderColor" name="ribbonBorderColor" class="color-circle settings-color-circle" type="color" value="' + escapeHtml(ribbon.borderColor) + '">',
             '</div>',
             '<div class="settings-shortcuts">',
             '<div class="settings-subhead">',
@@ -1055,6 +1138,57 @@
         ].join(''));
     }
 
+    function renderCustomizationCancelConfirm() {
+        setModal([
+            '<div class="modal-backdrop">',
+            '<section class="glass-modal compact-modal" role="dialog" aria-modal="true" aria-labelledby="customizationCancelTitle">',
+            '<div class="modal-header">',
+            '<div>',
+            '<p class="setup-kicker danger-kicker">Warning</p>',
+            '<h1 id="customizationCancelTitle" class="setup-title">Discard position changes?</h1>',
+            '</div>',
+            '<button class="icon-button modal-close" type="button" data-action="closeCustomizationCancel" aria-label="Close cancel dialog"><i class="fa-solid fa-xmark"></i></button>',
+            '</div>',
+            '<p class="field-info">This will undo every position change made in customization mode.</p>',
+            '<div class="form-actions">',
+            '<button class="danger-button active text-danger-button" type="button" data-action="confirmCustomizationCancel">Discard changes</button>',
+            '<button class="ghost-button" type="button" data-action="closeCustomizationCancel">Keep editing</button>',
+            '</div>',
+            '</section>',
+            '</div>'
+        ].join(''));
+    }
+
+    function startCustomizationMode() {
+        clearSettingsToast();
+        stopLoop();
+        state.customization = {
+            draftLayout: normalizeLayoutSettings(state.settings.layout),
+            drag: null
+        };
+        document.body.classList.remove('settings-open');
+        document.body.classList.add('customization-open');
+        settingsButton.hidden = true;
+        renderDashboard();
+        state.interval = setInterval(updateDashboardTime, 100);
+    }
+
+    function saveCustomizationMode() {
+        if (!state.customization) return;
+        state.settings.layout = normalizeLayoutSettings(state.customization.draftLayout);
+        state.customization = null;
+        document.body.classList.remove('customization-open');
+        saveSettings(state.settings);
+        startLoop();
+    }
+
+    function discardCustomizationMode() {
+        state.customization = null;
+        document.body.classList.remove('customization-open');
+        clearModal();
+        startLoop();
+    }
+
     function createShortcut() {
         return {
             id: String(Date.now()) + String(Math.floor(Math.random() * 10000)),
@@ -1114,6 +1248,11 @@
                     countdownSuffix: fields.countdownSuffix.value.trim(),
                     styles: readTextStyleFields(fields)
                 }),
+                ribbon: normalizeRibbonSettings({
+                    name: fields.ribbonName.value.trim(),
+                    borderColor: fields.ribbonBorderColor.value
+                }),
+                layout: normalizeLayoutSettings(state.settings.layout),
                 customFont: state.settings.customFont,
                 shortcuts: (state.settings.shortcuts || [])
                     .map(function (shortcut) {
@@ -1206,6 +1345,24 @@
     }
 
     app.addEventListener('pointerdown', function (event) {
+        if (state.customization) {
+            var object = event.target.closest('.customization-object');
+            if (object && !event.target.closest('.customization-toast')) {
+                var key = object.getAttribute('data-layout-key');
+                var rect = object.getBoundingClientRect();
+                state.customization.drag = {
+                    object: object,
+                    key: key,
+                    offsetX: event.clientX - rect.left,
+                    offsetY: event.clientY - rect.top
+                };
+                object.classList.add('customization-object-dragging');
+                object.setPointerCapture && object.setPointerCapture(event.pointerId);
+                event.preventDefault();
+                return;
+            }
+        }
+
         var handle = event.target.closest('.drag-handle');
         if (!handle) return;
 
@@ -1240,6 +1397,17 @@
     });
 
     document.addEventListener('pointermove', function (event) {
+        if (state.customization && state.customization.drag) {
+            var layoutDrag = state.customization.drag;
+            var x = clampNumber(((event.clientX - layoutDrag.offsetX + layoutDrag.object.offsetWidth / 2) / window.innerWidth) * 100, 2, 98, 50);
+            var y = clampNumber(((event.clientY - layoutDrag.offsetY + layoutDrag.object.offsetHeight / 2) / window.innerHeight) * 100, 2, 98, 50);
+            state.customization.draftLayout[layoutDrag.key] = { x: x, y: y };
+            layoutDrag.object.style.left = x + 'vw';
+            layoutDrag.object.style.top = y + 'vh';
+            event.preventDefault();
+            return;
+        }
+
         if (!state.drag) return;
 
         var drag = state.drag;
@@ -1263,6 +1431,15 @@
 
     document.addEventListener('pointerup', finishShortcutDrag);
     document.addEventListener('pointercancel', finishShortcutDrag);
+
+    function finishCustomizationDrag() {
+        if (!state.customization || !state.customization.drag) return;
+        state.customization.drag.object.classList.remove('customization-object-dragging');
+        state.customization.drag = null;
+    }
+
+    document.addEventListener('pointerup', finishCustomizationDrag);
+    document.addEventListener('pointercancel', finishCustomizationDrag);
 
     modalRoot.addEventListener('input', function (event) {
         if (event.target.id === 'iconSearchInput') {
@@ -1292,6 +1469,7 @@
 
         if (shortcutLink && state.settings) {
             event.preventDefault();
+            if (state.customization) return;
 
             if (event.ctrlKey || event.metaKey) {
                 activateShortcut(shortcutLink, 'newtab');
@@ -1344,6 +1522,18 @@
             state.settings = loadSettings();
             state.resetArmed = false;
             startLoop();
+        }
+
+        if (action === 'startCustomization') {
+            startCustomizationMode();
+        }
+
+        if (action === 'saveCustomization') {
+            saveCustomizationMode();
+        }
+
+        if (action === 'cancelCustomization') {
+            renderCustomizationCancelConfirm();
         }
 
         if (action === 'addSettingsShortcut') {
@@ -1399,6 +1589,7 @@
         if (!shortcutLink || !state.settings || event.button !== 1) return;
 
         event.preventDefault();
+        if (state.customization) return;
         activateShortcut(shortcutLink, 'newtab');
     });
 
@@ -1449,6 +1640,10 @@
             clearModal();
         }
 
+        if (action === 'closeCustomizationCancel') {
+            clearModal();
+        }
+
         if (action === 'confirmResetSettings') {
             localStorage.removeItem(STORAGE_KEY);
             state.settings = null;
@@ -1487,6 +1682,10 @@
 
             state.counterResetTarget = null;
             clearModal();
+        }
+
+        if (action === 'confirmCustomizationCancel') {
+            discardCustomizationMode();
         }
 
         if (action === 'selectIcon') {
