@@ -1,5 +1,8 @@
 (function () {
     var STORAGE_KEY = 'mementoSettings';
+    var FONT_DB_NAME = 'mementoFontLibrary';
+    var FONT_DB_VERSION = 1;
+    var FONT_STORE_NAME = 'fonts';
     var GLOBAL_LIFE_EXPECTANCY = 71.4;
     var YEAR_MS = 31556900000;
     var DEFAULT_TEXT = {
@@ -12,27 +15,32 @@
         ageLabel: {
             size: 1.2,
             textColor: '#b0b5b9',
-            borderColor: '#000000'
+            borderColor: '#000000',
+            fontId: ''
         },
         ageCounter: {
             size: 6,
             textColor: '#494949',
-            borderColor: '#000000'
+            borderColor: '#000000',
+            fontId: ''
         },
         countdownPrefix: {
             size: 1,
             textColor: '#b0b5b9',
-            borderColor: '#000000'
+            borderColor: '#000000',
+            fontId: ''
         },
         countdownValue: {
             size: 0.75,
             textColor: '#880808',
-            borderColor: '#000000'
+            borderColor: '#000000',
+            fontId: ''
         },
         countdownSuffix: {
             size: 0.5,
             textColor: '#1e1e1e',
-            borderColor: '#000000'
+            borderColor: '#000000',
+            fontId: ''
         }
     };
     var DEFAULT_RIBBON = {
@@ -66,6 +74,8 @@
         counterResetTarget: null,
         iconSearch: '',
         iconDraft: null,
+        fonts: [],
+        fontPickerTarget: null,
         resetArmed: false,
         drag: null,
         customization: null
@@ -93,6 +103,7 @@
                     ribbon: normalizeRibbonSettings(saved.ribbon),
                     layout: normalizeLayoutSettings(saved.layout),
                     customFont: normalizeCustomFont(saved.customFont),
+                    fonts: normalizeFontList(saved.fonts),
                     rainbowUnlocked: saved.rainbowUnlocked === true,
                     shortcuts: normalizeShortcutsSettings(saved.shortcuts, saved.ribbons, saved.ribbon)
                 };
@@ -151,7 +162,8 @@
             id: ribbon.id || createId(),
             name: ribbon.name || DEFAULT_RIBBON.name,
             borderColor: normalizeHexColor(ribbon.borderColor, DEFAULT_RIBBON.borderColor),
-            rainbowBorder: ribbon.rainbowBorder === true
+            rainbowBorder: ribbon.rainbowBorder === true,
+            fontId: ribbon.fontId || ''
         };
     }
 
@@ -212,8 +224,24 @@
         return {
             size: clampNumber(style.size, 0.1, 32, defaults.size),
             textColor: normalizeHexColor(style.textColor, defaults.textColor),
-            borderColor: normalizeHexColor(style.borderColor, defaults.borderColor)
+            borderColor: normalizeHexColor(style.borderColor, defaults.borderColor),
+            fontId: style.fontId || defaults.fontId || ''
         };
+    }
+
+    function normalizeFontList(fonts) {
+        if (!Array.isArray(fonts)) return [];
+        var seen = {};
+        return fonts.map(function (font) {
+            return {
+                id: font.id || createId(),
+                name: font.name || 'Uploaded font'
+            };
+        }).filter(function (font) {
+            if (seen[font.id]) return false;
+            seen[font.id] = true;
+            return true;
+        });
     }
 
     function clampNumber(value, min, max, fallback) {
@@ -230,7 +258,8 @@
     function renderTextStyle(style, fallback) {
         var normalized = normalizeTextStyle(style, fallback);
         var borderColor = escapeHtml(normalized.borderColor);
-        return 'font-size:' + normalized.size + 'rem;color:' + escapeHtml(normalized.textColor) + ';-webkit-text-stroke-color:' + borderColor + ';text-shadow:-0.03em 0 ' + borderColor + ',0.03em 0 ' + borderColor + ',0 -0.03em ' + borderColor + ',0 0.03em ' + borderColor + ';';
+        var fontFamily = normalized.fontId ? 'font-family:' + getFontFamilyName(normalized.fontId) + ', var(--dashboard-font, Lato, sans-serif);' : '';
+        return fontFamily + 'font-size:' + normalized.size + 'rem;color:' + escapeHtml(normalized.textColor) + ';-webkit-text-stroke-color:' + borderColor + ';text-shadow:-0.03em 0 ' + borderColor + ',0.03em 0 ' + borderColor + ',0 -0.03em ' + borderColor + ',0 0.03em ' + borderColor + ';';
     }
 
     function normalizeCustomFont(font) {
@@ -243,8 +272,13 @@
 
     function saveSettings(settings) {
         state.settings = settings;
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-        applyPageIdentity();
+        try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+            applyPageIdentity();
+        } catch (error) {
+            console.warn('Could not save Memento settings.', error);
+            throw new Error('Settings could not be saved. Try removing large uploaded images or icons.');
+        }
     }
 
     function applyPageIdentity() {
@@ -259,15 +293,31 @@
     }
 
     function applyCustomFont() {
-        if (!state.settings || !state.settings.customFont) {
+        document.documentElement.style.setProperty('--dashboard-font', 'Lato, Avenir, "helvetica neue", helvetica, arial, sans-serif');
+        applyFontFaces();
+    }
+
+    function getFontFamilyName(fontId) {
+        return 'MementoFont-' + String(fontId || '').replace(/[^a-z0-9_-]/gi, '');
+    }
+
+    function applyFontFaces() {
+        var fonts = state.settings && state.settings.fonts ? state.settings.fonts : [];
+        if (!fonts.length) {
             customFontStyle.textContent = '';
-            document.documentElement.style.setProperty('--dashboard-font', 'Lato, Avenir, "helvetica neue", helvetica, arial, sans-serif');
             return;
         }
 
-        var fontName = 'MementoUserFont';
-        customFontStyle.textContent = '@font-face { font-family: "' + fontName + '"; src: url("' + state.settings.customFont.data + '"); }';
-        document.documentElement.style.setProperty('--dashboard-font', '"' + fontName + '", Lato, Avenir, "helvetica neue", helvetica, arial, sans-serif');
+        Promise.all(fonts.map(function (font) {
+            return getStoredFont(font.id).then(function (stored) {
+                if (!stored || !stored.data) return '';
+                return '@font-face { font-family: "' + getFontFamilyName(font.id) + '"; src: url("' + stored.data + '"); font-display: swap; }';
+            }).catch(function () {
+                return '';
+            });
+        })).then(function (rules) {
+            customFontStyle.textContent = rules.filter(Boolean).join('\n');
+        });
     }
 
     function escapeHtml(value) {
@@ -331,6 +381,99 @@
         reader.readAsDataURL(file);
     }
 
+    function openFontDb() {
+        return new Promise(function (resolve, reject) {
+            if (!window.indexedDB) {
+                reject(new Error('Font storage is not available in this browser.'));
+                return;
+            }
+
+            var request = indexedDB.open(FONT_DB_NAME, FONT_DB_VERSION);
+            request.onupgradeneeded = function () {
+                var db = request.result;
+                if (!db.objectStoreNames.contains(FONT_STORE_NAME)) {
+                    db.createObjectStore(FONT_STORE_NAME, { keyPath: 'id' });
+                }
+            };
+            request.onsuccess = function () {
+                resolve(request.result);
+            };
+            request.onerror = function () {
+                reject(request.error || new Error('Could not open font storage.'));
+            };
+        });
+    }
+
+    function withFontStore(mode, callback) {
+        return openFontDb().then(function (db) {
+            return new Promise(function (resolve, reject) {
+                var tx = db.transaction(FONT_STORE_NAME, mode);
+                var store = tx.objectStore(FONT_STORE_NAME);
+                var request;
+
+                try {
+                    request = callback(store);
+                } catch (error) {
+                    reject(error);
+                    return;
+                }
+
+                tx.oncomplete = function () {
+                    db.close();
+                    resolve(request && 'result' in request ? request.result : undefined);
+                };
+                tx.onerror = function () {
+                    db.close();
+                    reject(tx.error || new Error('Font storage failed.'));
+                };
+            });
+        });
+    }
+
+    function getStoredFont(fontId) {
+        if (!fontId) return Promise.resolve(null);
+        return withFontStore('readonly', function (store) {
+            return store.get(fontId);
+        });
+    }
+
+    function saveUploadedFont(file) {
+        if (!file) return Promise.resolve(null);
+
+        var lowerName = file.name.toLowerCase();
+        var validExtension = /\.(woff2?|ttf|otf)$/.test(lowerName);
+        if (!validExtension) {
+            return Promise.reject(new Error('Font must be WOFF, WOFF2, TTF, or OTF.'));
+        }
+
+        return new Promise(function (resolve, reject) {
+            var reader = new FileReader();
+            reader.onload = function () {
+                var font = {
+                    id: createId(),
+                    name: file.name.replace(/\.(woff2?|ttf|otf)$/i, ''),
+                    data: reader.result,
+                    fileName: file.name
+                };
+                withFontStore('readwrite', function (store) {
+                    return store.put(font);
+                }).then(function () {
+                    resolve({ id: font.id, name: font.name });
+                }).catch(reject);
+            };
+            reader.onerror = function () {
+                reject(reader.error || new Error('Could not read font file.'));
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    function deleteStoredFont(fontId) {
+        return withFontStore('readwrite', function (store) {
+            return store.delete(fontId);
+        });
+    }
+
     function stopLoop() {
         if (state.interval) {
             clearInterval(state.interval);
@@ -356,6 +499,7 @@
         state.counterResetTarget = null;
         state.iconSearch = '';
         state.iconDraft = null;
+        state.fontPickerTarget = null;
         modalRoot.innerHTML = '';
         document.body.classList.remove('modal-open');
     }
@@ -515,6 +659,7 @@
             ribbon: normalizeRibbonSettings(DEFAULT_RIBBON),
             layout: normalizeLayoutSettings(null),
             customFont: null,
+            fonts: [],
             rainbowUnlocked: false,
             shortcuts: shortcuts
         };
@@ -622,7 +767,7 @@
         var ribbonClass = 'shortcut-ribbon' + (ribbon.name ? ' has-title' : '') + (ribbon.rainbowBorder ? ' rainbow-ribbon' : '');
         return [
             '<nav class="' + ribbonClass + '" aria-label="' + escapeHtml(ribbon.name || 'Shortcuts') + '" style="border-color:' + escapeHtml(ribbon.borderColor) + '">',
-            ribbon.name ? '<div class="ribbon-title" style="--ribbon-title-bg:#050505">' + escapeHtml(ribbon.name) + '</div>' : '',
+            ribbon.name ? '<div class="ribbon-title" style="--ribbon-title-bg:#050505' + (ribbon.fontId ? ';font-family:&quot;' + getFontFamilyName(ribbon.fontId) + '&quot;, var(--dashboard-font, Lato, sans-serif)' : '') + '">' + escapeHtml(ribbon.name) + '</div>' : '',
             shortcuts.length ? [
             shortcuts.map(function (shortcut) {
                 var initial = escapeHtml(shortcut.name.charAt(0).toUpperCase());
@@ -737,6 +882,7 @@
             '<p class="field-info">Leave the icon empty to keep the current one.</p>',
             '<div class="settings-section">',
             '<h2>Main screen text</h2>',
+            '<button class="ghost-button tiny-button section-font-button" type="button" data-action="openFontPicker" data-font-target="allText">Change all fonts</button>',
             renderTextSettingControl('settingsAgeLabel', 'ageLabel', 'Age label', text.ageLabel, 80, styles.ageLabel),
             renderTextSettingControl('settingsAgeCounter', 'ageCounter', 'Age counter', '', 0, styles.ageCounter),
             renderTextSettingControl('settingsCountdownPrefix', 'countdownPrefix', 'Countdown lead-in', text.countdownPrefix, 120, styles.countdownPrefix),
@@ -744,9 +890,12 @@
             renderTextSettingControl('settingsCountdownSuffix', 'countdownSuffix', 'Countdown footer', text.countdownSuffix, 120, styles.countdownSuffix),
             '</div>',
             '<div class="settings-section">',
-            '<h2>Main screen font</h2>',
+            '<h2>Fonts</h2>',
+            '<div class="font-upload-row">',
             '<input id="settingsFont" name="dashboardFont" type="file" accept=".woff,.woff2,.ttf,.otf,font/woff,font/woff2,font/ttf,font/otf">',
-            '<p class="field-info">Settings stay in Lato for readability. Uploaded WOFF, WOFF2, TTF, or OTF fonts apply to the main countdown screen.</p>',
+            '<button class="ghost-button" type="button" data-action="openFontLibrary">Show fonts (' + normalizeFontList(settings.fonts).length + ')</button>',
+            '</div>',
+            '<p class="field-info">Uploaded WOFF, WOFF2, TTF, or OTF fonts can be assigned to individual main-screen text objects. *Lato will still be used in the settings menu.</p>',
             '</div>',
             '<div class="settings-section">',
             '<div class="settings-subhead">',
@@ -801,6 +950,7 @@
             '<div class="text-setting-row" data-text-control="' + escapeHtml(name) + '">',
             '<div class="text-setting-input">',
             textInput,
+            renderFontButton('text', name, normalized.fontId),
             '</div>',
             '<div class="text-style-controls">',
             '<label class="mini-field-label" for="' + id + 'Size">Size</label>',
@@ -820,6 +970,7 @@
         return [
             '<div class="ribbon-control-box">',
             '<span>Ribbon settings</span>',
+            '<button class="ghost-button tiny-button" type="button" data-action="openFontPicker" data-font-target="allRibbons">Change all fonts</button>',
             '<button class="ghost-button tiny-button" type="button" data-action="addRibbon">Add ribbon</button>',
             '<button class="ghost-button tiny-button" type="button" data-action="startCustomization">Change positions</button>',
             '<button class="ghost-button tiny-button reset-all-counters-button" type="button" data-action="openPositionsReset">Reset positions</button>',
@@ -837,6 +988,7 @@
                 '<div class="ribbon-settings-row" data-ribbon-id="' + escapeHtml(ribbon.id) + '">',
                 '<span class="ribbon-settings-index">' + escapeHtml(String(index + 1)) + '</span>',
                 '<input type="text" data-ribbon-field="name" maxlength="80" value="' + escapeHtml(ribbon.name) + '" placeholder="Ribbon name">',
+                renderFontButton('ribbon', ribbon.id, ribbon.fontId),
                 '<label class="mini-field-label ribbon-color-label">Border</label>',
                 '<input data-ribbon-field="borderColor" class="color-circle settings-color-circle" type="color" value="' + escapeHtml(ribbon.borderColor) + '">',
                 rainbowUnlocked ? renderRainbowToggle('ribbon', ribbon.rainbowBorder === true) : '',
@@ -921,6 +1073,24 @@
             '<span>Rainbow</span>',
             '</label>'
         ].join('');
+    }
+
+    function renderFontButton(scope, target, fontId) {
+        var fontName = getFontDisplayName(fontId);
+        return [
+            '<button class="font-select-button" type="button" data-action="openFontPicker" data-font-target="' + escapeHtml(scope) + '" data-font-id="' + escapeHtml(target) + '">',
+            '<span>Font</span>',
+            '<small>' + escapeHtml(fontName) + '</small>',
+            '</button>'
+        ].join('');
+    }
+
+    function getFontDisplayName(fontId) {
+        if (!fontId) return 'Lato';
+        var font = (state.settings && state.settings.fonts || []).find(function (item) {
+            return item.id === fontId;
+        });
+        return font ? font.name : 'Missing font';
     }
 
     function renderShortcutIconButton(shortcut) {
@@ -1138,11 +1308,15 @@
     function readRibbonSettingsFromForm() {
         var rows = Array.prototype.slice.call(document.querySelectorAll('#settingsRibbons .ribbon-settings-row'));
         var ribbons = rows.map(function (row) {
+            var existingRibbon = state.settings && state.settings.ribbons ? state.settings.ribbons.find(function (ribbon) {
+                return ribbon.id === row.getAttribute('data-ribbon-id');
+            }) : null;
             return normalizeRibbonSettings({
                 id: row.getAttribute('data-ribbon-id'),
                 name: (row.querySelector('[data-ribbon-field="name"]') || {}).value || '',
                 borderColor: (row.querySelector('[data-ribbon-field="borderColor"]') || {}).value || DEFAULT_RIBBON.borderColor,
-                rainbowBorder: !!(row.querySelector('[data-ribbon-field="rainbowBorder"]') || {}).checked
+                rainbowBorder: !!(row.querySelector('[data-ribbon-field="rainbowBorder"]') || {}).checked,
+                fontId: existingRibbon ? existingRibbon.fontId : ''
             });
         });
 
@@ -1191,6 +1365,92 @@
         if (ribbonSection) ribbonSection.innerHTML = renderRibbonSettingsRows(state.settings.ribbons);
         if (shortcutsSection) shortcutsSection.innerHTML = renderSettingsShortcutRows(state.settings.shortcuts, state.settings.ribbons);
         showSettingsToast('Rainbow settings unlocked.');
+    }
+
+    function applySelectedFont(fontId) {
+        if (!state.settings || !state.fontPickerTarget) return;
+
+        var target = state.fontPickerTarget;
+        var styles = state.settings.text.styles;
+
+        if (target.scope === 'allText') {
+            Object.keys(styles).forEach(function (key) {
+                styles[key].fontId = fontId;
+            });
+            Array.prototype.slice.call(document.querySelectorAll('.text-setting-row .font-select-button')).forEach(function (button) {
+                var textTarget = button.getAttribute('data-font-id');
+                button.outerHTML = renderFontButton('text', textTarget, fontId);
+            });
+        }
+
+        if (target.scope === 'text' && styles[target.target]) {
+            styles[target.target].fontId = fontId;
+            var textButton = document.querySelector('[data-action="openFontPicker"][data-font-target="text"][data-font-id="' + target.target + '"]');
+            if (textButton) textButton.outerHTML = renderFontButton('text', target.target, fontId);
+        }
+
+        if (target.scope === 'allRibbons') {
+            state.settings.ribbons.forEach(function (ribbon) {
+                ribbon.fontId = fontId;
+            });
+            var ribbonsContainer = document.getElementById('settingsRibbons');
+            if (ribbonsContainer) ribbonsContainer.innerHTML = renderRibbonSettingsRows(state.settings.ribbons);
+        }
+
+        if (target.scope === 'ribbon') {
+            var ribbon = state.settings.ribbons.find(function (item) {
+                return item.id === target.target;
+            });
+            if (ribbon) {
+                ribbon.fontId = fontId;
+                var ribbonButton = document.querySelector('[data-action="openFontPicker"][data-font-target="ribbon"][data-font-id="' + target.target + '"]');
+                if (ribbonButton) ribbonButton.outerHTML = renderFontButton('ribbon', target.target, fontId);
+            }
+        }
+
+        clearModal();
+        showSettingsToast('Font applied.');
+    }
+
+    function removeFontFromSettings(fontId) {
+        if (!state.settings) return;
+        state.settings.fonts = normalizeFontList(state.settings.fonts).filter(function (font) {
+            return font.id !== fontId;
+        });
+        Object.keys(state.settings.text.styles).forEach(function (key) {
+            if (state.settings.text.styles[key].fontId === fontId) state.settings.text.styles[key].fontId = '';
+        });
+        state.settings.ribbons.forEach(function (ribbon) {
+            if (ribbon.fontId === fontId) ribbon.fontId = '';
+        });
+    }
+
+    function refreshFontControlsInSettings() {
+        if (!state.settings) return;
+
+        var libraryButton = document.querySelector('.font-upload-row [data-action="openFontLibrary"]');
+        if (libraryButton) libraryButton.textContent = 'Show fonts (' + normalizeFontList(state.settings.fonts).length + ')';
+
+        Array.prototype.slice.call(document.querySelectorAll('.font-select-button')).forEach(function (button) {
+            var scope = button.getAttribute('data-font-target');
+            var target = button.getAttribute('data-font-id') || '';
+            var fontId = '';
+
+            if (scope === 'text' && state.settings.text && state.settings.text.styles[target]) {
+                fontId = state.settings.text.styles[target].fontId || '';
+            }
+
+            if (scope === 'ribbon') {
+                var ribbon = state.settings.ribbons.find(function (item) {
+                    return item.id === target;
+                });
+                fontId = ribbon ? ribbon.fontId || '' : '';
+            }
+
+            if (scope === 'text' || scope === 'ribbon') {
+                button.outerHTML = renderFontButton(scope, target, fontId);
+            }
+        });
     }
 
     function validateSettingsShortcuts() {
@@ -1439,6 +1699,88 @@
         ].join(''));
     }
 
+    function renderFontLibrary() {
+        var fonts = normalizeFontList(state.settings && state.settings.fonts);
+        setModal([
+            '<div class="modal-backdrop">',
+            '<section class="glass-modal font-modal" role="dialog" aria-modal="true" aria-labelledby="fontLibraryTitle">',
+            '<div class="modal-header">',
+            '<div>',
+            '<p class="setup-kicker">Uploaded fonts</p>',
+            '<h1 id="fontLibraryTitle" class="setup-title">Fonts</h1>',
+            '</div>',
+            '<button class="icon-button modal-close" type="button" data-action="closeFontLibrary" aria-label="Close fonts dialog"><i class="fa-solid fa-xmark"></i></button>',
+            '</div>',
+            fonts.length ? '<div class="font-list">' + fonts.map(function (font) {
+                return [
+                    '<div class="font-list-row" data-font-id="' + escapeHtml(font.id) + '">',
+                    '<button class="font-name-button" type="button" data-action="previewFont" data-font-id="' + escapeHtml(font.id) + '">' + escapeHtml(font.name) + '</button>',
+                    '<button class="icon-button" type="button" data-action="deleteFont" data-font-id="' + escapeHtml(font.id) + '" title="Delete font" aria-label="Delete font"><i class="fa-solid fa-trash"></i></button>',
+                    '</div>'
+                ].join('');
+            }).join('') + '</div>' : '<p class="empty-note">No fonts uploaded yet.</p>',
+            '</section>',
+            '</div>'
+        ].join(''));
+    }
+
+    function renderFontPreview(fontId) {
+        var font = normalizeFontList(state.settings && state.settings.fonts).find(function (item) {
+            return item.id === fontId;
+        });
+        if (!font) {
+            renderFontLibrary();
+            return;
+        }
+
+        setModal([
+            '<div class="modal-backdrop">',
+            '<section class="glass-modal font-modal" role="dialog" aria-modal="true" aria-labelledby="fontPreviewTitle">',
+            '<div class="modal-header">',
+            '<div>',
+            '<p class="setup-kicker">Uploaded font</p>',
+            '<h1 id="fontPreviewTitle" class="setup-title">' + escapeHtml(font.name) + '</h1>',
+            '</div>',
+            '<button class="icon-button modal-close" type="button" data-action="closeFontLibrary" aria-label="Close font preview"><i class="fa-solid fa-xmark"></i></button>',
+            '</div>',
+            '<div class="font-preview" style="font-family:&quot;' + getFontFamilyName(font.id) + '&quot;, Lato, sans-serif">',
+            '<p>THE QUICK BROWN FOX JUMPS OVER THE LAZY DOG</p>',
+            '<p>the quick brown fox jumps over the lazy dog</p>',
+            '</div>',
+            '<div class="form-actions">',
+            '<button class="ghost-button" type="button" data-action="openFontLibrary">Back</button>',
+            '<button class="danger-button active text-danger-button" type="button" data-action="deleteFont" data-font-id="' + escapeHtml(font.id) + '">Delete font</button>',
+            '</div>',
+            '</section>',
+            '</div>'
+        ].join(''));
+    }
+
+    function renderFontPicker(target) {
+        state.fontPickerTarget = target;
+        var fonts = normalizeFontList(state.settings && state.settings.fonts);
+        setModal([
+            '<div class="modal-backdrop">',
+            '<section class="glass-modal font-modal" role="dialog" aria-modal="true" aria-labelledby="fontPickerTitle">',
+            '<div class="modal-header">',
+            '<div>',
+            '<p class="setup-kicker">Choose font</p>',
+            '<h1 id="fontPickerTitle" class="setup-title">Apply a font</h1>',
+            '</div>',
+            '<button class="icon-button modal-close" type="button" data-action="closeFontPicker" aria-label="Close font picker"><i class="fa-solid fa-xmark"></i></button>',
+            '</div>',
+            '<div class="font-choice-list">',
+            '<button class="font-choice-button" type="button" data-action="chooseFont" data-font-id=""><span>Default Lato</span><small>Built in</small></button>',
+            fonts.map(function (font) {
+                return '<button class="font-choice-button" type="button" data-action="chooseFont" data-font-id="' + escapeHtml(font.id) + '"><span>' + escapeHtml(font.name) + '</span><small style="font-family:&quot;' + getFontFamilyName(font.id) + '&quot;, Lato, sans-serif">Aa Bb Cc</small></button>';
+            }).join(''),
+            '</div>',
+            fonts.length ? '' : '<p class="field-info">Upload fonts from the Fonts section before assigning them.</p>',
+            '</section>',
+            '</div>'
+        ].join(''));
+    }
+
     function renderCustomizationCancelConfirm() {
         setModal([
             '<div class="modal-backdrop">',
@@ -1554,7 +1896,8 @@
                 ribbons: ribbons,
                 ribbon: ribbons[0],
                 layout: normalizeLayoutSettings(state.settings.layout),
-                customFont: state.settings.customFont,
+                customFont: null,
+                fonts: normalizeFontList(state.settings.fonts),
                 rainbowUnlocked: state.settings.rainbowUnlocked === true,
                 shortcuts: (state.settings.shortcuts || [])
                     .map(function (shortcut) {
@@ -1578,11 +1921,16 @@
 
             readIconFile(fields.icon.files[0], function (icon) {
                 if (icon) nextSettings.icon = icon;
-                readFontFile(fields.dashboardFont.files[0], function (font) {
-                    if (font) nextSettings.customFont = font;
+                saveUploadedFont(fields.dashboardFont.files[0]).then(function (font) {
+                    if (font && !nextSettings.fonts.some(function (item) { return item.id === font.id; })) {
+                        nextSettings.fonts.push(font);
+                    }
                     state.resetArmed = false;
                     saveSettings(nextSettings);
                     startLoop();
+                }).catch(function (error) {
+                    pulseSettingsSaveButton(event.target);
+                    showSettingsToast(error.message || 'Font upload failed.');
                 });
             });
         }
@@ -1639,10 +1987,12 @@
 
     function readTextStyleField(fields, name, defaults) {
         var sizeInput = fields[name + 'SizeNumber'] || fields[name + 'Size'];
+        var currentStyle = state.settings && state.settings.text && state.settings.text.styles ? state.settings.text.styles[name] : null;
         return normalizeTextStyle({
             size: sizeInput ? sizeInput.value : defaults.size,
             textColor: fields[name + 'TextColor'] ? fields[name + 'TextColor'].value : defaults.textColor,
-            borderColor: fields[name + 'BorderColor'] ? fields[name + 'BorderColor'].value : defaults.borderColor
+            borderColor: fields[name + 'BorderColor'] ? fields[name + 'BorderColor'].value : defaults.borderColor,
+            fontId: currentStyle ? currentStyle.fontId : defaults.fontId
         }, defaults);
     }
 
@@ -1661,6 +2011,11 @@
         if (number) number.value = defaults.size.toFixed(2);
         if (textColor) textColor.value = defaults.textColor;
         if (borderColor) borderColor.value = defaults.borderColor;
+        if (state.settings && state.settings.text && state.settings.text.styles && state.settings.text.styles[name]) {
+            state.settings.text.styles[name].fontId = defaults.fontId || '';
+            var fontButton = button.closest('.text-setting-row').querySelector('.font-select-button');
+            if (fontButton) fontButton.outerHTML = renderFontButton('text', name, defaults.fontId || '');
+        }
     }
 
     function getDashboardStageRect() {
@@ -1964,6 +2319,17 @@
             renderPositionsResetConfirm();
         }
 
+        if (action === 'openFontLibrary') {
+            renderFontLibrary();
+        }
+
+        if (action === 'openFontPicker') {
+            renderFontPicker({
+                scope: actionElement.getAttribute('data-font-target'),
+                target: actionElement.getAttribute('data-font-id') || ''
+            });
+        }
+
         if (action === 'resetTextStyle') {
             resetTextStyleControl(actionElement);
         }
@@ -2013,6 +2379,36 @@
 
         if (action === 'closeIconPicker') {
             clearModal();
+        }
+
+        if (action === 'closeFontLibrary' || action === 'closeFontPicker') {
+            state.fontPickerTarget = null;
+            clearModal();
+        }
+
+        if (action === 'openFontLibrary') {
+            renderFontLibrary();
+        }
+
+        if (action === 'previewFont') {
+            renderFontPreview(actionElement.getAttribute('data-font-id'));
+        }
+
+        if (action === 'chooseFont') {
+            applySelectedFont(actionElement.getAttribute('data-font-id') || '');
+        }
+
+        if (action === 'deleteFont') {
+            var fontId = actionElement.getAttribute('data-font-id');
+            deleteStoredFont(fontId).then(function () {
+                removeFontFromSettings(fontId);
+                saveSettings(state.settings);
+                refreshFontControlsInSettings();
+                renderFontLibrary();
+            }).catch(function (error) {
+                clearModal();
+                showSettingsToast(error.message || 'Could not delete font.');
+            });
         }
 
         if (action === 'closeResetConfirm') {
