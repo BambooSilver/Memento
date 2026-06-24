@@ -47,9 +47,9 @@
         height: 1440
     };
     var DEFAULT_LAYOUT = {
-        ribbon: { x: 50, y: 21 },
-        ageLabel: { x: 50, y: 40 },
-        ageCounter: { x: 50, y: 49 },
+        ribbon: { x: 50, y: 18 },
+        ageLabel: { x: 50, y: 43 },
+        ageCounter: { x: 50, y: 52 },
         countdownPrefix: { x: 50, y: 62 },
         countdownValue: { x: 50, y: 67 },
         countdownSuffix: { x: 50, y: 72 }
@@ -613,7 +613,7 @@
             if (!ribbonShortcuts.length && !ribbon.name && !state.customization) return '';
 
             var key = getRibbonLayoutKey(ribbon);
-            var point = layout[key] || (index === 0 ? layout.ribbon : null) || getDefaultRibbonPoint(index);
+            var point = layout[key] || (index === 0 ? layout.ribbon : null) || getDefaultRibbonPointForCount(index, ribbons.length);
             return renderDashboardObject(key, renderShortcutRibbon(ribbon, ribbonShortcuts), point);
         }).join('');
     }
@@ -680,10 +680,25 @@
     }
 
     function getDefaultRibbonPoint(index) {
+        return getDefaultRibbonPointForCount(index, 1);
+    }
+
+    function getDefaultRibbonPointForCount(index, count) {
+        var gap = 18;
+        var x = DEFAULT_LAYOUT.ribbon.x + ((index - ((count - 1) / 2)) * gap);
         return {
-            x: DEFAULT_LAYOUT.ribbon.x,
-            y: clampNumber(DEFAULT_LAYOUT.ribbon.y + (index * 13), 2, 98, DEFAULT_LAYOUT.ribbon.y)
+            x: clampNumber(x, 8, 92, DEFAULT_LAYOUT.ribbon.x),
+            y: DEFAULT_LAYOUT.ribbon.y
         };
+    }
+
+    function buildDefaultLayoutForRibbons(ribbons) {
+        var layout = normalizeLayoutSettings(null);
+        ribbons = ribbons && ribbons.length ? ribbons : getSettingsRibbons();
+        ribbons.forEach(function (ribbon, index) {
+            layout[getRibbonLayoutKey(ribbon)] = getDefaultRibbonPointForCount(index, ribbons.length);
+        });
+        return layout;
     }
 
     function renderSettings() {
@@ -2064,7 +2079,8 @@
 
         if (action === 'confirmPositionsReset') {
             if (state.settings) {
-                state.settings.layout = normalizeLayoutSettings(null);
+                state.settings.ribbons = readRibbonSettingsFromForm();
+                state.settings.layout = buildDefaultLayoutForRibbons(state.settings.ribbons);
                 saveSettings(state.settings);
             }
             clearModal();

@@ -123,8 +123,10 @@ body.settings-open #app {
 }
 
 .shortcut-ribbon.rainbow-ribbon:before {
-    animation: rainbowSpin 5s linear infinite;
-    background: conic-gradient(#ff2d2d, #ff9f0a, #ffe600, #31d158, #00c7ff, #3455ff, #bf5af2, #ff2d2d);
+    animation: rainbowSlide 3.2s linear infinite;
+    background:
+        linear-gradient(90deg, rgba(255,0,0,1) 0%, rgba(255,154,0,1) 10%, rgba(208,222,33,1) 20%, rgba(79,220,74,1) 30%, rgba(63,218,216,1) 40%, rgba(47,201,226,1) 50%, rgba(28,127,238,1) 60%, rgba(95,21,242,1) 70%, rgba(186,12,248,1) 80%, rgba(251,7,217,1) 90%, rgba(255,0,0,1) 100%)
+        0 0 / 200% 100%;
     border-radius: inherit;
     content: "";
     inset: -2px;
@@ -191,9 +193,10 @@ body.settings-open #app {
 }
 
 .rainbow-icon {
-    animation: rainbowText 3.8s linear infinite;
-    background: linear-gradient(90deg, #ff2d2d, #ff9f0a, #ffe600, #31d158, #00c7ff, #3455ff, #bf5af2, #ff2d2d);
-    background-size: 260% 100%;
+    animation: rainbowSlide 2.8s linear infinite;
+    background:
+        linear-gradient(90deg, rgba(255,0,0,1) 0%, rgba(255,154,0,1) 10%, rgba(208,222,33,1) 20%, rgba(79,220,74,1) 30%, rgba(63,218,216,1) 40%, rgba(47,201,226,1) 50%, rgba(28,127,238,1) 60%, rgba(95,21,242,1) 70%, rgba(186,12,248,1) 80%, rgba(251,7,217,1) 90%, rgba(255,0,0,1) 100%)
+        0 0 / 200% 100%;
     color: transparent !important;
     display: inline-block;
     -webkit-background-clip: text;
@@ -814,9 +817,10 @@ input::file-selector-button {
 }
 
 .rainbow-unlocked-note {
-    animation: rainbowText 4s linear infinite;
-    background: linear-gradient(90deg, #ff2d2d, #ff9f0a, #ffe600, #31d158, #00c7ff, #3455ff, #bf5af2, #ff2d2d);
-    background-size: 260% 100%;
+    animation: rainbowSlide 3.2s linear infinite;
+    background:
+        linear-gradient(90deg, rgba(255,0,0,1) 0%, rgba(255,154,0,1) 10%, rgba(208,222,33,1) 20%, rgba(79,220,74,1) 30%, rgba(63,218,216,1) 40%, rgba(47,201,226,1) 50%, rgba(28,127,238,1) 60%, rgba(95,21,242,1) 70%, rgba(186,12,248,1) 80%, rgba(251,7,217,1) 90%, rgba(255,0,0,1) 100%)
+        0 0 / 200% 100%;
     color: transparent;
     font-size: 0.78rem;
     font-weight: 700;
@@ -1154,21 +1158,18 @@ input::file-selector-button {
 }
 
 .rainbow-toggle input:checked + .rainbow-toggle-dot {
-    animation: rainbowSpin 3s linear infinite;
+    animation: rainbowSlide 3s linear infinite;
+    background:
+        linear-gradient(90deg, rgba(255,0,0,1) 0%, rgba(255,154,0,1) 10%, rgba(208,222,33,1) 20%, rgba(79,220,74,1) 30%, rgba(63,218,216,1) 40%, rgba(47,201,226,1) 50%, rgba(28,127,238,1) 60%, rgba(95,21,242,1) 70%, rgba(186,12,248,1) 80%, rgba(251,7,217,1) 90%, rgba(255,0,0,1) 100%)
+        0 0 / 200% 100%;
     border-color: #b0b5b9;
     box-shadow: 0 0 12px rgba(255, 255, 255, 0.2);
     opacity: 1;
 }
 
-@keyframes rainbowSpin {
+@keyframes rainbowSlide {
     to {
-        filter: hue-rotate(360deg);
-    }
-}
-
-@keyframes rainbowText {
-    to {
-        background-position: 260% 0;
+        background-position: -200% 0;
     }
 }
 
