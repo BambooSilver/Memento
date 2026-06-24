@@ -396,7 +396,7 @@ body.settings-open #app {
 .setup-panel-wide,
 .settings-panel {
     max-width: 680px;
-    padding-bottom: 110px;
+    padding-bottom: 140px;
     width: min(100%, 680px);
 }
 
@@ -1100,23 +1100,30 @@ input::file-selector-button {
 
 .settings-action-bar {
     align-items: center;
-    backdrop-filter: blur(16px);
-    background: linear-gradient(180deg, rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.82) 34%, rgba(0, 0, 0, 0.94));
-    border-top: 1px solid rgba(53, 61, 63, 0.65);
-    bottom: 0;
+    backdrop-filter: blur(18px) saturate(1.15);
+    background:
+        linear-gradient(180deg, rgba(21, 24, 25, 0.58), rgba(5, 5, 5, 0.78)),
+        rgba(5, 5, 5, 0.64);
+    border: 1px solid rgba(53, 61, 63, 0.78);
+    border-radius: 18px;
+    bottom: 22px;
+    box-shadow: 0 22px 70px rgba(0, 0, 0, 0.62), inset 0 1px 0 rgba(216, 210, 194, 0.06);
     display: flex;
     gap: 12px;
     justify-content: space-between;
     left: 50%;
-    max-width: 680px;
-    padding: 18px 0 22px;
+    max-width: min(520px, calc(100vw - 44px));
+    min-height: 58px;
+    padding: 9px;
     position: fixed;
     transform: translateX(-50%);
-    width: min(calc(100% - 56px), 680px);
+    width: min(520px, calc(100vw - 44px));
     z-index: 5;
 }
 
 .sticky-actions {
+    display: flex;
+    gap: 8px;
     margin-top: 0;
 }
 
@@ -1632,11 +1639,11 @@ input::file-selector-button {
 
     body.settings-open #app {
         min-height: auto;
-        padding: 12px 0 110px;
+        padding: 12px 0 132px;
     }
 
     .settings-panel {
-        padding-bottom: 120px;
+        padding-bottom: 132px;
     }
 
     .settings-subhead h2,
@@ -1645,8 +1652,10 @@ input::file-selector-button {
     }
 
     .settings-action-bar {
-        padding: 16px 0 18px;
-        width: min(calc(100% - 40px), 680px);
+        bottom: 16px;
+        border-radius: 16px;
+        padding: 8px;
+        width: min(calc(100% - 32px), 420px);
     }
 
     .text-setting-row {
