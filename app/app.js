@@ -468,6 +468,20 @@
         });
     }
 
+    function saveUploadedFonts(files) {
+        var fontFiles = Array.prototype.slice.call(files || []);
+        if (!fontFiles.length) return Promise.resolve([]);
+
+        return fontFiles.reduce(function (chain, file) {
+            return chain.then(function (savedFonts) {
+                return saveUploadedFont(file).then(function (font) {
+                    if (font) savedFonts.push(font);
+                    return savedFonts;
+                });
+            });
+        }, Promise.resolve([]));
+    }
+
     function deleteStoredFont(fontId) {
         return withFontStore('readwrite', function (store) {
             return store.delete(fontId);
@@ -892,10 +906,11 @@
             '<div class="settings-section">',
             '<h2>Fonts</h2>',
             '<div class="font-upload-row">',
-            '<input id="settingsFont" name="dashboardFont" type="file" accept=".woff,.woff2,.ttf,.otf,font/woff,font/woff2,font/ttf,font/otf">',
+            '<input id="settingsFont" name="dashboardFont" type="file" accept=".woff,.woff2,.ttf,.otf,font/woff,font/woff2,font/ttf,font/otf" multiple>',
+            '<button id="addFontsToLibrary" class="ghost-button font-add-button" type="button" data-action="addFontsToLibrary" hidden>Add to library</button>',
             '<button class="ghost-button" type="button" data-action="openFontLibrary">Show fonts (' + normalizeFontList(settings.fonts).length + ')</button>',
             '</div>',
-            '<p class="field-info">Uploaded WOFF, WOFF2, TTF, or OTF fonts can be assigned to individual main-screen text objects. *Lato will still be used in the settings menu.</p>',
+            '<p class="field-info">Uploaded WOFF, WOFF2, TTF, or OTF fonts can be assigned to individual main-screen text objects. <strong>*Lato will still be used in the settings menu.</strong></p>',
             '</div>',
             '<div class="settings-section">',
             '<div class="settings-subhead">',
@@ -1364,7 +1379,7 @@
         if (controlBox) controlBox.outerHTML = renderRibbonSettingsControls(true);
         if (ribbonSection) ribbonSection.innerHTML = renderRibbonSettingsRows(state.settings.ribbons);
         if (shortcutsSection) shortcutsSection.innerHTML = renderSettingsShortcutRows(state.settings.shortcuts, state.settings.ribbons);
-        showSettingsToast('Rainbow settings unlocked.');
+        showSettingsToast('Rainbow settings unlocked.', 'success');
     }
 
     function applySelectedFont(fontId) {
@@ -1409,7 +1424,7 @@
         }
 
         clearModal();
-        showSettingsToast('Font applied.');
+        showSettingsToast('Font applied.', 'success');
     }
 
     function removeFontFromSettings(fontId) {
@@ -1450,6 +1465,59 @@
             if (scope === 'text' || scope === 'ribbon') {
                 button.outerHTML = renderFontButton(scope, target, fontId);
             }
+        });
+    }
+
+    function getSelectedFontFiles() {
+        var input = document.getElementById('settingsFont');
+        return input ? Array.prototype.slice.call(input.files || []) : [];
+    }
+
+    function updateFontUploadAction() {
+        var button = document.getElementById('addFontsToLibrary');
+        var files = getSelectedFontFiles();
+        if (!button) return;
+
+        button.hidden = files.length === 0;
+        button.disabled = files.length === 0;
+        button.textContent = files.length > 1 ? 'Add ' + files.length + ' fonts to library' : 'Add to library';
+    }
+
+    function importSelectedFonts(button) {
+        var input = document.getElementById('settingsFont');
+        var files = getSelectedFontFiles();
+
+        if (!files.length) {
+            showSettingsToast('Choose at least one font first.', 'error');
+            return;
+        }
+
+        button.disabled = true;
+        button.textContent = 'Adding...';
+
+        saveUploadedFonts(files).then(function (fonts) {
+            if (!state.settings.fonts) state.settings.fonts = [];
+            fonts.forEach(function (font) {
+                if (!state.settings.fonts.some(function (item) { return item.id === font.id; })) {
+                    state.settings.fonts.push(font);
+                }
+            });
+            state.settings.fonts = normalizeFontList(state.settings.fonts);
+            saveSettings(state.settings);
+            if (input) input.value = '';
+            updateFontUploadAction();
+            refreshFontControlsInSettings();
+            showSettingsToast(fonts.length === 1 ? 'Font added to library.' : fonts.length + ' fonts added to library.', 'success');
+        }).catch(function (error) {
+            button.disabled = false;
+            button.textContent = files.length > 1 ? 'Add ' + files.length + ' fonts to library' : 'Add to library';
+            button.classList.remove('save-button-error');
+            void button.offsetWidth;
+            button.classList.add('save-button-error');
+            window.setTimeout(function () {
+                button.classList.remove('save-button-error');
+            }, 650);
+            showSettingsToast(error.message || 'Font upload failed.', 'error');
         });
     }
 
@@ -1504,12 +1572,12 @@
         });
     }
 
-    function showSettingsToast(message) {
+    function showSettingsToast(message, variant) {
         var existing = document.querySelector('.settings-toast');
         if (existing) existing.remove();
 
         var toast = document.createElement('div');
-        toast.className = 'settings-toast';
+        toast.className = 'settings-toast ' + (variant === 'success' ? 'success' : 'error');
         toast.setAttribute('role', 'status');
         toast.textContent = message;
         document.body.appendChild(toast);
@@ -1874,7 +1942,7 @@
             var shortcutValidation = validateSettingsShortcuts();
             if (!shortcutValidation.ok) {
                 pulseSettingsSaveButton(event.target);
-                showSettingsToast(shortcutValidation.message || 'Shortcut setup is incomplete.');
+                showSettingsToast(shortcutValidation.message || 'Shortcut setup is incomplete.', 'error');
                 return;
             }
             clearSettingsToast();
@@ -1921,17 +1989,14 @@
 
             readIconFile(fields.icon.files[0], function (icon) {
                 if (icon) nextSettings.icon = icon;
-                saveUploadedFont(fields.dashboardFont.files[0]).then(function (font) {
-                    if (font && !nextSettings.fonts.some(function (item) { return item.id === font.id; })) {
-                        nextSettings.fonts.push(font);
-                    }
+                try {
                     state.resetArmed = false;
                     saveSettings(nextSettings);
                     startLoop();
-                }).catch(function (error) {
+                } catch (error) {
                     pulseSettingsSaveButton(event.target);
-                    showSettingsToast(error.message || 'Font upload failed.');
-                });
+                    showSettingsToast(error.message || 'Settings could not be saved.', 'error');
+                }
             });
         }
     });
@@ -1946,6 +2011,11 @@
             var sliderInput = event.target.parentElement.querySelector('.text-size-slider');
             var numericValue = Number(event.target.value);
             if (sliderInput && isFinite(numericValue)) sliderInput.value = Math.min(Math.max(numericValue, 0.4), 8);
+        }
+
+        if (event.target.id === 'settingsFont') {
+            updateFontUploadAction();
+            return;
         }
 
         if (event.target.matches('.secret-unlock-input')) {
@@ -2330,6 +2400,10 @@
             });
         }
 
+        if (action === 'addFontsToLibrary') {
+            importSelectedFonts(actionElement);
+        }
+
         if (action === 'resetTextStyle') {
             resetTextStyleControl(actionElement);
         }
@@ -2407,7 +2481,7 @@
                 renderFontLibrary();
             }).catch(function (error) {
                 clearModal();
-                showSettingsToast(error.message || 'Could not delete font.');
+                showSettingsToast(error.message || 'Could not delete font.', 'error');
             });
         }
 
@@ -2480,7 +2554,7 @@
                 saveSettings(state.settings);
             }
             clearModal();
-            showSettingsToast('Positions reset.');
+            showSettingsToast('Positions reset.', 'success');
         }
 
         if (action === 'selectIcon') {
